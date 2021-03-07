@@ -8,7 +8,7 @@ from actions import ImageViewer
 import sys, os
 
 gui = uic.loadUiType("main.ui")[0]     # load UI file designed in Qt Designer
-VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.XBM')  # Image formats supported by Qt
+VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.XBM', '.TIF')  # Image formats supported by Qt
 
 def getImages(folder):
     ''' Get the names and paths of all the images in a directory. '''
@@ -43,19 +43,36 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.zoom_minus.clicked.connect(self.image_viewer.zoomMinus)
         self.reset_zoom.clicked.connect(self.image_viewer.resetZoom)
 
-        self.toggle_line.toggled.connect(self.action_line)
-        self.toggle_rect.toggled.connect(self.action_rect)
         self.toggle_move.toggled.connect(self.action_move)
 
     def selectDir(self):
         ''' Select a directory, make list of images in it and display the first image in the list. '''
         # open 'select folder' dialog box
-        self.folder = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.folder = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")) + "/"
         if not self.folder:
             QtWidgets.QMessageBox.warning(self, 'No Folder Selected', 'Please select a valid Folder')
             return
-        
-        self.logs = getImages(self.folder)
+
+        dirs = [dir_[0] for dir_ in os.walk(self.folder)][1:]
+
+        dir_hr = [dir_.split("/")[-1] for dir_ in dirs] # Human-readable directories
+        dir_clean = list(map(str.strip, list(map(str.upper, dir_hr)))) # Stripped and trimmed dir_hr
+
+        for i in range(len(dir_clean)):
+            dir_ = dir_clean[i]
+            if "BF" == dir_:
+                self.image_viewer.folders["BF"] = dirs[i]
+            if "TEXAS RED" == dir_:
+                self.image_viewer.folders["TR"] = dirs[i]
+    
+        if self.image_viewer.folders["BF"] is None:            
+            QtWidgets.QMessageBox.warning(self, 'Missing Folder', 'Brightfield (BF) folder cannot be found. Please select directory with BF folder.')
+            return
+        elif self.image_viewer.folders["TR"] is None:
+            QtWidgets.QMessageBox.warning(self, 'Missing Folder', 'Texas Red folder cannot be found. Please select directory with Texas Red folder.')
+            return
+
+        self.logs = getImages(self.image_viewer.folders["BF"])
         self.numImages = len(self.logs)
 
         # make qitems of the image names
@@ -63,14 +80,14 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         for item in self.items:
             self.qlist_images.addItem(item)
 
-        # display first image and enable Pan 
+        # Display first image and enable Pan 
         self.cntr = 0
         self.image_viewer.enablePan(True)
         self.image_viewer.loadImage(self.logs[self.cntr]['path'])
 
         self.items[self.cntr].setSelected(True)
 
-        # enable the next image button on the gui if multiple images are loaded
+        # Enable the next image button on the gui if multiple images are loaded
         if self.numImages > 1:
             self.next_im.setEnabled(True)
 
@@ -95,18 +112,9 @@ class Iwindow(QtWidgets.QMainWindow, gui):
             QtWidgets.QMessageBox.warning(self, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
-        self.cntr = self.items.index(item)
-        self.image_viewer.loadImage(self.logs[self.cntr]['path'])
-
-    def action_line(self):
-        if self.toggle_line.isChecked():
-            self.qlabel_image.setCursor(QtCore.Qt.CrossCursor)
-            self.image_viewer.enablePan(False)
-
-    def action_rect(self):
-        if self.toggle_rect.isChecked():
-            self.qlabel_image.setCursor(QtCore.Qt.CrossCursor)
-            self.image_viewer.enablePan(False)
+        # self.cntr = self.items.index(item)
+        pass
+        # self.image_viewer.loadImage(self.logs[self.cntr]['path'])
 
     def action_move(self):
         if self.toggle_move.isChecked():

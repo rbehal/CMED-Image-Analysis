@@ -19,6 +19,8 @@ class ImageViewer:
         self.position = [0, 0]      # position of top left corner of qimage_label w.r.t. qimage_scaled
         self.panFlag = False        # to enable or disable pan
 
+        self.folders = {"BF": None, "TR": None}
+
         self.qlabel_image.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.__connectEvents()
 
