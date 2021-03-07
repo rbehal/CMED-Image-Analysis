@@ -30,7 +30,7 @@ class ImageViewer:
         self.basePath = ""
         self.currImageIdx = -1 
         self.numImages = -1
-        self.items = []
+        self.qImageNameItems = []
 
         self.trImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.bfImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
@@ -54,6 +54,9 @@ class ImageViewer:
 
         VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.TIF', '.XBM')  # Image formats supported by Qt
         id_pattern = "(p\d{1,4})" # Image id example: 'scan_Plate_R_{p03}_0_A02f00d4.TIF',
+        
+        self.bfImages.list = []
+        self.trImages.list = []
 
         # Populate Bright Field image list
         if os.path.isdir(self.bfImages.path):
@@ -114,9 +117,6 @@ class ImageViewer:
         # Display first image and enable Pan 
         self.currImageIdx = 0
         self.enablePan(True)
-        self.loadImage(self.currImages.list[self.currImageIdx].path)
-
-        self.items[self.currImageIdx].setSelected(True)
 
         # Enable the next image button on the gui if multiple images are loaded
         if self.numImages > 1:
@@ -130,7 +130,7 @@ class ImageViewer:
         if self.currImageIdx < self.numImages -1:
             self.currImageIdx += 1
             self.loadImage(self.currImages.list[self.currImageIdx].path)
-            self.items[self.currImageIdx].setSelected(True)
+            self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
 
@@ -138,12 +138,12 @@ class ImageViewer:
         if self.currImageIdx > 0:
             self.currImageIdx -= 1
             self.loadImage(self.currImages.list[self.currImageIdx].path)
-            self.items[self.currImageIdx].setSelected(True)
+            self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
-        self.currImageIdx = self.items.index(item)
+        self.currImageIdx = self.qImageNameItems.index(item)
         self.loadImage(self.currImages.list[self.currImageIdx].path)
 
     def action_move(self):
@@ -245,22 +245,24 @@ class ImageViewer:
         image = cv2.normalize(image*16, dst=None, alpha=min_bit*16, beta=max_bit*16, norm_type=cv2.NORM_MINMAX)
         return image
 
-    # Convert an opencv image to QPixmapself
+    # Convert an opencv image to QPixmap
     def convertCvImage2QtImage(self, cv_img_arr):
         PIL_image = PIL.Image.fromarray(cv_img_arr)
         return ImageQt(PIL_image)
 
     def changeImageList(self, list_):
         # Make a list of qitems for the image names
-        self.items = [QtWidgets.QListWidgetItem(img.name) for img in list_]
+        self.qImageNameItems = [QtWidgets.QListWidgetItem(img.name) for img in list_]
         self.window.qlist_images.clear()
-        for item in self.items:
+        for item in self.qImageNameItems:
             self.window.qlist_images.addItem(item)
+        self.qImageNameItems[self.currImageIdx].setSelected(True)            
+        self.loadImage(self.currImages.list[self.currImageIdx].path)
 
-    def changeTab(self):
-        if self.currImages.type == "BF":
+    def changeTab(self, idx):
+        if idx == 1:
+            self.currImages = self.trImages 
             self.changeImageList(self.trImages.list)
-            self.currImages = self.trImages
         else:
+            self.currImages = self.bfImages 
             self.changeImageList(self.bfImages.list)
-            self.currImages = self.bfImages

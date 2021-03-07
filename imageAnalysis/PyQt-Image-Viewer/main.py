@@ -32,6 +32,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
 
         self.toggle_move.toggled.connect(self.imageViewer.action_move)
 
+        self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
