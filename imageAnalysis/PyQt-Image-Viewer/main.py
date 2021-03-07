@@ -4,7 +4,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
-from actions import ImageViewer
+from ImageViewer import ImageViewer
 import sys, os
 
 gui = uic.loadUiType("main.ui")[0]     # load UI file designed in Qt Designer
@@ -27,7 +27,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.setupUi(self)
 
         self.cntr, self.numImages = -1, -1  # self.cntr have the info of which image is selected/displayed
-
+        
         self.image_viewer = ImageViewer(self.qlabel_image)
         self.__connectEvents()
         self.showMaximized()

@@ -1,10 +1,10 @@
 from PyQt5.QtGui import QImage, QPixmap, QPainter
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-__author__ = "Atinderpal Singh"
-__license__ = "MIT"
-__version__ = "1.0"
-__email__ = "atinderpalap@gmail.com"
+from PIL.ImageQt import ImageQt 
+from PIL import Image
+import cv2
+import numpy as np
 
 class ImageViewer:
     ''' Basic image viewer class to show an image with zoom and pan functionaities.
@@ -34,18 +34,19 @@ class ImageViewer:
         ''' things to do when qlabel_image is resized '''
         self.qpixmap = QPixmap(self.qlabel_image.size())
         self.qpixmap.fill(QtCore.Qt.gray)
-        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatio)
+        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.update()
 
     def loadImage(self, imagePath):
         ''' To load and display new image.'''
-        self.qimage = QImage(imagePath)
+        self.qimage = self.convertCvImage2QtImage(self.preprocessImg(imagePath))
         self.qpixmap = QPixmap(self.qlabel_image.size())
         if not self.qimage.isNull():
             # reset Zoom factor and Pan position
             self.zoomX = 1
             self.position = [0, 0]
-            self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width(), self.qlabel_image.height(), QtCore.Qt.KeepAspectRatio)
+            print(self.qlabel_image.width(), self.qlabel_image.height())
+            self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width(), self.qlabel_image.height(), QtCore.Qt.KeepAspectRatioByExpanding)
             self.update()
         else:
             self.statusbar.showMessage('Cannot open this image! Try another one.', 5000)
@@ -100,7 +101,7 @@ class ImageViewer:
         px += self.qlabel_image.width()/2
         py += self.qlabel_image.height()/2
         self.position = (px, py)
-        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatio)
+        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.update()
 
     def zoomMinus(self):
@@ -110,14 +111,27 @@ class ImageViewer:
             px -= self.qlabel_image.width()/2
             py -= self.qlabel_image.height()/2
             self.position = (px, py)
-            self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatio)
+            self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
             self.update()
 
     def resetZoom(self):
         self.zoomX = 1
         self.position = [0, 0]
-        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatio)
+        self.qimage_scaled = self.qimage.scaled(self.qlabel_image.width() * self.zoomX, self.qlabel_image.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.update()
 
     def enablePan(self, value):
         self.panFlag = value
+
+    def preprocessImg(self, img_path):
+        image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        # Normalize image
+        min_bit = np.min(image)
+        max_bit = np.max(image)
+        image = cv2.normalize(image*16, dst=None, alpha=min_bit*16, beta=max_bit*16, norm_type=cv2.NORM_MINMAX)
+        return image
+
+    # Convert an opencv image to QPixmap
+    def convertCvImage2QtImage(self, cv_img_arr):
+        PIL_image = Image.fromarray(cv_img_arr)
+        return ImageQt(PIL_image)
