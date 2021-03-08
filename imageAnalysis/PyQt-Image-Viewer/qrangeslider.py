@@ -8,11 +8,8 @@ __version__ = "0.1.1"
 """The QRangeSlider class implements a horizontal range slider widget.
 """
 
-# ---------------------------------------------------------------------------------------------
-# TODO
-# ---------------------------------------------------------------------------------------------
-
 """
+  - name of file must be all lowercase for use in QT Designer
   - support splits and joins
   - verticle sliders
   - ticks

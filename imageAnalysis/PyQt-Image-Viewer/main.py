@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from qrangeslider import QRangeSlider
+from ProgressBar import ProgressBar
 
 from ImageViewer import ImageViewer
 import sys, os, re
@@ -35,6 +36,9 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.radius_slider.endValueChanged.connect(self.maxRadius_box.setValue)
         self.minRadius_box.valueChanged.connect(self.radius_slider.setStart)
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
+
+    def createProgressBar(self, max_):
+        self.progressBar = ProgressBar(max_)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

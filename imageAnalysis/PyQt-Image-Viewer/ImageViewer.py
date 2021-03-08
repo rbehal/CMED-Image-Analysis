@@ -1,12 +1,8 @@
 from PyQt5.QtGui import QImage, QPixmap, QPainter
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from PIL.ImageQt import ImageQt 
-import PIL.Image
 from Image import Image
 from ImageCollection import ImageCollection
-import cv2
-import numpy as np
 import os, re
 
 class ImageViewer:
@@ -61,10 +57,16 @@ class ImageViewer:
         self.bfImages.list = []
         self.trImages.list = []
 
+        
         # If data is timelapse divided into BF and Texas Red Folders
         if len(self.dayFolders) == 0:
+            # Initializing progress bar
+            totalNumFiles = len(os.listdir(self.bfImages.path)) + len(os.listdir(self.trImages.path))
+            self.window.createProgressBar(totalNumFiles)
+
             # Populate Bright Field image list
             for file in os.listdir(self.bfImages.path):
+                self.window.progressBar.increment()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.bfImages.path, file)
 
@@ -79,6 +81,7 @@ class ImageViewer:
             
             # Populate Texas Red image list                    
             for file in os.listdir(self.trImages.path):
+                self.window.progressBar.increment()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.trImages.path, file)
 
@@ -87,11 +90,17 @@ class ImageViewer:
                     
                     image_obj = Image(id_, file, "TR", im_path)
                     self.trImages.list.append(image_obj)  
-        else: # Or else it must be daily folders    
+        else: # Or else it must be daily folders  
+            # Initializing progress bar
+            totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
+            self.window.createProgressBar(totalNumFiles)
+
             day_file_pattern = "_.{6}d(\d)"
 
             for day_num, day_path in self.dayFolders:
                 for file in os.listdir(day_path):
+                    self.window.progressBar.increment()
+                    
                     im_path = os.path.join(day_path, file)
                     # All files with day structure have p00, so in id and name it's replaced with p[day_num]                    
                     id_ = "p{0:0=2d}".format(int(day_num)) 
@@ -108,6 +117,7 @@ class ImageViewer:
                             self.trImages.list.append(image_obj)  
                         else:
                             continue
+        self.window.progressBar.done()
         return      
 
     def selectDir(self):
@@ -166,7 +176,7 @@ class ImageViewer:
     def nextImg(self):
         if self.currImageIdx < self.numImages -1:
             self.currImageIdx += 1
-            self.loadImage(self.currImages.list[self.currImageIdx].path)
+            self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
             self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
@@ -174,23 +184,23 @@ class ImageViewer:
     def prevImg(self):
         if self.currImageIdx > 0:
             self.currImageIdx -= 1
-            self.loadImage(self.currImages.list[self.currImageIdx].path)
+            self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
             self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
         self.currImageIdx = self.qImageNameItems.index(item)
-        self.loadImage(self.currImages.list[self.currImageIdx].path)
+        self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
 
     def action_move(self):
         if self.toggle_move.isChecked():
             self.currImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor)
             self.enablePan(True)        
 
-    def loadImage(self, imagePath):
+    def loadImage(self, imgQt):
         ''' To load and display new image.'''
-        self.qimage = self.convertCvImage2QtImage(self.preprocessImg(imagePath))
+        self.qimage = imgQt
         self.qpixmap = QPixmap(self.currImages.qlabel.size())
         if not self.qimage.isNull():
             # reset Zoom factor and Pan position
@@ -274,19 +284,6 @@ class ImageViewer:
     def enablePan(self, value):
         self.panFlag = value
 
-    def preprocessImg(self, img_path):
-        image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        # Normalize image
-        min_bit = np.min(image)
-        max_bit = np.max(image)
-        image = cv2.normalize(image*16, dst=None, alpha=min_bit*16, beta=max_bit*16, norm_type=cv2.NORM_MINMAX)
-        return image
-
-    # Convert an opencv image to QPixmap
-    def convertCvImage2QtImage(self, cv_img_arr):
-        PIL_image = PIL.Image.fromarray(cv_img_arr)
-        return ImageQt(PIL_image)
-
     def changeImageList(self, list_):
         # Make a list of qitems for the image names
         self.qImageNameItems = [QtWidgets.QListWidgetItem(img.name) for img in list_]
@@ -294,7 +291,7 @@ class ImageViewer:
         for item in self.qImageNameItems:
             self.window.qlist_images.addItem(item)
         self.qImageNameItems[self.currImageIdx].setSelected(True)            
-        self.loadImage(self.currImages.list[self.currImageIdx].path)
+        self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
 
     def changeTab(self, idx):
         if self.numImages > 0:
