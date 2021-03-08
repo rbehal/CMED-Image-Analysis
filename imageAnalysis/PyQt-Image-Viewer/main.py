@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-
-''' A basic GUi to use ImageViewer class to show its functionalities and use cases. '''
-
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from qrangeslider import QRangeSlider
 
 from ImageViewer import ImageViewer
 import sys, os, re
@@ -34,6 +31,11 @@ class Iwindow(QtWidgets.QMainWindow, gui):
 
         self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
 
+        self.radius_slider.startValueChanged.connect(self.minRadius_box.setValue)
+        self.radius_slider.endValueChanged.connect(self.maxRadius_box.setValue)
+        self.minRadius_box.valueChanged.connect(self.radius_slider.setStart)
+        self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle(QtWidgets.QStyleFactory.create("Cleanlooks"))
@@ -42,5 +44,4 @@ def main():
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    print(__doc__)
     main()

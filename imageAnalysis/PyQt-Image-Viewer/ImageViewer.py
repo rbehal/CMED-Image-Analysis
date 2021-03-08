@@ -25,7 +25,8 @@ class ImageViewer:
 
         self.zoomX = 1                        # Zoom factor w.r.t size of currImages.qlabel
         self.position = [0, 0]                # Position of top left corner of currImages.qlabel w.r.t. qimage_scaled
-        self.panFlag = False                  # to enable or disable pan
+        self.panFlag = False                  # To enable or disable pan
+        self.pressed = False                  # Mouse pressed
 
         self.basePath = ""
         self.currImageIdx = -1 
@@ -260,9 +261,10 @@ class ImageViewer:
         self.loadImage(self.currImages.list[self.currImageIdx].path)
 
     def changeTab(self, idx):
-        if idx == 1:
-            self.currImages = self.trImages 
-            self.changeImageList(self.trImages.list)
-        else:
-            self.currImages = self.bfImages 
-            self.changeImageList(self.bfImages.list)
+        if self.numImages > 0:
+            if idx == 1:
+                self.currImages = self.trImages 
+                self.changeImageList(self.trImages.list)
+            else:
+                self.currImages = self.bfImages 
+                self.changeImageList(self.bfImages.list)
