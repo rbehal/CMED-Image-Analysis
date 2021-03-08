@@ -29,6 +29,8 @@ class ImageViewer:
         self.pressed = False                  # Mouse pressed
 
         self.basePath = ""
+        self.dayFolders = [] 
+
         self.currImageIdx = -1 
         self.numImages = -1
         self.qImageNameItems = []
@@ -59,20 +61,23 @@ class ImageViewer:
         self.bfImages.list = []
         self.trImages.list = []
 
-        # Populate Bright Field image list
-        if os.path.isdir(self.bfImages.path):
+        # If data is timelapse divided into BF and Texas Red Folders
+        if len(self.dayFolders) == 0:
+            # Populate Bright Field image list
             for file in os.listdir(self.bfImages.path):
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.bfImages.path, file)
 
                     match = re.search(id_pattern, file)
-                    id_ = match.group()            
+                    if match:
+                        id_ = match.group()
+                    else:
+                        continue     
                     
                     image_obj = Image(id_, file, "BF", im_path)
                     self.bfImages.list.append(image_obj)
-        
-        # Populate Texas Red image list                    
-        if os.path.isdir(self.trImages.path):
+            
+            # Populate Texas Red image list                    
             for file in os.listdir(self.trImages.path):
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.trImages.path, file)
@@ -81,7 +86,28 @@ class ImageViewer:
                     id_ = match.group()
                     
                     image_obj = Image(id_, file, "TR", im_path)
-                    self.trImages.list.append(image_obj)      
+                    self.trImages.list.append(image_obj)  
+        else: # Or else it must be daily folders    
+            day_file_pattern = "_.{6}d(\d)"
+
+            for day_num, day_path in self.dayFolders:
+                for file in os.listdir(day_path):
+                    im_path = os.path.join(day_path, file)
+                    # All files with day structure have p00, so in id and name it's replaced with p[day_num]                    
+                    id_ = "p{0:0=2d}".format(int(day_num)) 
+                    name = file.replace("p00",id_)
+                    
+                    match = re.search(day_file_pattern, file)
+                    if match:
+                        groups = match.groups()[0]
+                        if groups == "4":
+                            image_obj = Image(id_, name, "BF", im_path)
+                            self.bfImages.list.append(image_obj)                            
+                        elif groups == "3":
+                            image_obj = Image(id_, name, "TR", im_path)
+                            self.trImages.list.append(image_obj)  
+                        else:
+                            continue
         return      
 
     def selectDir(self):
@@ -92,22 +118,32 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'No Folder Selected', 'Please select a valid Folder')
             return
 
-        dirs = [dir_[0] for dir_ in os.walk(self.basePath)][1:]
+        subdirs = next(os.walk(self.basePath))[1]
+        dirs = [os.path.join(self.basePath, dir_) for dir_ in subdirs]            
+        dir_clean = list(map(str.strip, list(map(str.upper, subdirs))))
 
-        dir_hr = [dir_.split("/")[-1] for dir_ in dirs] # Human-readable directories
-        dir_clean = list(map(str.strip, list(map(str.upper, dir_hr)))) # Stripped and trimmed dir_hr
-
+        day_pattern = "DAY(\d{1,2})" # Regex for finding day folders
         for i in range(len(dir_clean)):
             dir_ = dir_clean[i]
             if "BF" == dir_:
                 self.bfImages.path = dirs[i]
             if "TEXAS RED" == dir_:
                 self.trImages.path = dirs[i]
-    
-        if self.bfImages.path is None:            
+
+            match = re.search(day_pattern, dir_)
+            if match:
+                day_num = match.groups()[0]
+                self.dayFolders.append((day_num, dirs[i]))
+            else:
+                continue
+
+        if len(self.dayFolders) + len(self.trImages.path + self.bfImages.path) == 0:
+            QtWidgets.QMessageBox.warning(self.window, 'Improper Folder Structure', 'Folder structure selected is not supported. Please refer to available documentation.')
+            return
+        elif self.bfImages.path == "" and len(self.dayFolders) == 0:            
             QtWidgets.QMessageBox.warning(self.window, 'Missing Folder', 'Brightfield (BF) folder cannot be found. Please select directory with BF folder.')
             return
-        elif self.trImages.path is None:
+        elif self.trImages.path == "" and len(self.dayFolders) == 0:
             QtWidgets.QMessageBox.warning(self.window, 'Missing Folder', 'Texas Red folder cannot be found. Please select directory with Texas Red folder.')
             return
 
