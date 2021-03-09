@@ -5,8 +5,9 @@ from PyQt5.QtCore import *
   
 class ProgressBar(QWidget): 
   
-    def __init__(self, max_): 
+    def __init__(self, max_, mainWindow): 
         self.max = max_
+        self.mainWindow = mainWindow
         super().__init__() 
         self.initUI() 
   
@@ -21,7 +22,10 @@ class ProgressBar(QWidget):
         self.pbar.setValue(0)
   
         # Setting window attributes 
-        self.setGeometry(300, 300, 280, 170) 
+        w, h = 240, 100
+        x = self.mainWindow.frameGeometry().width() // 2 - w
+        y = self.mainWindow.frameGeometry().height() // 2 - h
+        self.setGeometry(x, y, h, w) 
         self.setFixedSize(240, 100)
         self.setWindowTitle("Loading Images...") 
   

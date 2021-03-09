@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Image Viewer</string>
+   <string>CMED Image Analysis</string>
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>icons/Icon.ico</normaloff>icons/Icon.ico</iconset>
+    <normaloff>icons/app_icon.png</normaloff>icons/app_icon.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">background-color: rgb(255, 255, 255);</string>
@@ -333,7 +333,7 @@ color:white;</string>
            <number>5</number>
           </property>
           <property name="value">
-           <number>250</number>
+           <number>0</number>
           </property>
          </widget>
         </item>

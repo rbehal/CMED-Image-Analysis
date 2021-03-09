@@ -13,6 +13,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.setupUi(self)
+        self.setTaskbarIcon()
 
         imageLabels = (self.qlabel_img_bf, self.qlabel_img_tr)
         self.imageViewer = ImageViewer(imageLabels, self)
@@ -44,7 +45,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
     def createProgressBar(self, max_):
-        self.progressBar = ProgressBar(max_)
+        self.progressBar = ProgressBar(max_, self)
 
     def initDrawDebounce(self, msDelay=750):
         self.debounce = QTimer()
@@ -78,6 +79,12 @@ class Iwindow(QtWidgets.QMainWindow, gui):
                 self.debounce.timeout.disconnect(self.imageViewer.drawCircle)   
         except:
             pass
+
+    def setTaskbarIcon(self):
+        if sys.platform == "win32":
+            import ctypes
+            appid = 'cmed Image Analysis.1.00' # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)      
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

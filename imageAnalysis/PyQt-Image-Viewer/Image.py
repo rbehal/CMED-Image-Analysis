@@ -2,14 +2,17 @@ from PIL.ImageQt import ImageQt
 import PIL.Image
 import cv2
 import numpy as np
+from copy import deepcopy
 
 
 class Image:
-    def __init__(self, id_, name, type_, path):
+    def __init__(self, id_, name, type_, path, view):
         self.id = id_
         self.name = name
         self.type = type_
         self.path = path
+
+        self.view = view
 
         self.originalImg = self.preprocessImg(self.path)
 
@@ -18,6 +21,8 @@ class Image:
 
         self.threshold = 120
         self.radiusRange = (40, 500) if type_ == "BF" else (10, 100)
+
+        self.shapes = []
 
     def preprocessImg(self, img_path):
         image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
@@ -53,19 +58,34 @@ class Image:
                 continue
             contours.append(contour)    
 
+        # Get coordinates of circles
         circle_coords = []
         for contour in contours:
             (x, y), r = cv2.minEnclosingCircle(contour)
             if r > radius_range[1]:
                 continue
-            circle_coords.append((x, y, r))
+            circle_coords.append(((x, y), r))
 
+        # Check if spheroids have ellipses in them -- Only keep the ones that do
+        if self.type == "BF":
+            if self.id in self.view.trImages.map:
+                trImage = self.view.trImages.map[self.id]
+                if len(trImage.shapes) > 0:
+                    temp = []
+                    for shape in trImage.shapes:
+                        center_point = shape[0]
+                        for circle_coord in circle_coords:
+                            if self.isPointInsideCircle(center_point, circle_coord) and circle_coord not in temp:
+                                temp.append(circle_coord)
+                    circle_coords = temp
+
+        self.shapes = deepcopy(circle_coords)
         colour_img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         colour = (255, 0, 0) # Red
         thickness = 3    
 
         # Draw circles
-        for x, y, r in circle_coords:
+        for (x, y), r in circle_coords:
             colour_img = cv2.circle(colour_img, (int(x),int(y)), int(r), colour, thickness) 
         self.setImg(colour_img)              
 
@@ -89,6 +109,8 @@ class Image:
                 continue
             ellipse_coords.append(((x,y),(w,h),ang)) 
 
+        self.shapes = deepcopy(ellipse_coords)   
+
         colour_img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         colour = (255, 0, 0) # Red
         thickness = 3
@@ -96,5 +118,10 @@ class Image:
         # Draw Ellipses
         for (x,y),(w,h),ang in ellipse_coords:
             colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
-        self.setImg(colour_img)             
+        self.setImg(colour_img)  
 
+    def isPointInsideCircle(self, point, circle_coords):
+        x, y = point
+        (x_center, y_center), r = circle_coords
+        dist = r**2 - ((x_center-x)**2 + (y_center-y)**2);
+        return dist >= 0

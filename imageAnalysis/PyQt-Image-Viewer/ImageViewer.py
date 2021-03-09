@@ -15,14 +15,14 @@ class ImageViewer:
         self.bfImages = ImageCollection("BF", imageLabels[0])
         self.trImages = ImageCollection("TR", imageLabels[1])
 
-        self.currImages = self.bfImages
+        self.currImageCol = self.trImages    # Current image collection
 
         self.window = window
-        self.qimage_scaled = QImage()         # Scaled image to fit to the size of currImages.qlabel
-        self.qpixmap = QPixmap()              # QPixmap to fill the currImages.qlabel
+        self.qimage_scaled = QImage()         # Scaled image to fit to the size of currImageCol.qlabel
+        self.qpixmap = QPixmap()              # QPixmap to fill the currImageCol.qlabel
 
-        self.zoomX = 1                        # Zoom factor w.r.t size of currImages.qlabel
-        self.position = [0, 0]                # Position of top left corner of currImages.qlabel w.r.t. qimage_scaled
+        self.zoomX = 1                        # Zoom factor w.r.t size of currImageCol.qlabel
+        self.position = [0, 0]                # Position of top left corner of currImageCol.qlabel w.r.t. qimage_scaled
         self.panFlag = False                  # To enable or disable pan
         self.pressed = False                  # Mouse pressed
 
@@ -52,9 +52,9 @@ class ImageViewer:
 
     def onResize(self):
         ''' Things to do when image is resized '''
-        self.qpixmap = QPixmap(self.currImages.qlabel.size())
+        self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         self.qpixmap.fill(QtCore.Qt.gray)
-        self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
+        self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
     def getImages(self):
@@ -63,8 +63,8 @@ class ImageViewer:
         VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.TIF', '.XBM')  # Image formats supported by Qt
         id_pattern = "(p\d{1,4})" # Image id example: 'scan_Plate_R_{p03}_0_A02f00d4.TIF',
         
-        self.bfImages.list = []
-        self.trImages.list = []
+        self.bfImages.reset()
+        self.trImages.reset()
 
         # If data is timelapse divided into BF and Texas Red Folders
         if len(self.dayFolders) == 0:
@@ -84,7 +84,7 @@ class ImageViewer:
                     else:
                         continue     
                     
-                    image_obj = Image(id_, file, "BF", im_path)
+                    image_obj = Image(id_, file, "BF", im_path, self)
                     self.bfImages.list.append(image_obj)
             
             # Populate Texas Red image list                    
@@ -96,8 +96,8 @@ class ImageViewer:
                     match = re.search(id_pattern, file)
                     id_ = match.group()
                     
-                    image_obj = Image(id_, file, "TR", im_path)
-                    self.trImages.list.append(image_obj)  
+                    image_obj = Image(id_, file, "TR", im_path, self)
+                    self.trImages.list.append(image_obj)
         else: # Or else it must be daily folders  
             # Initializing progress bar
             totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
@@ -118,13 +118,16 @@ class ImageViewer:
                     if match:
                         groups = match.groups()[0]
                         if groups == "4":
-                            image_obj = Image(id_, name, "BF", im_path)
+                            image_obj = Image(id_, name, "BF", im_path, self)
                             self.bfImages.list.append(image_obj)                            
                         elif groups == "3":
-                            image_obj = Image(id_, name, "TR", im_path)
+                            image_obj = Image(id_, name, "TR", im_path, self)
                             self.trImages.list.append(image_obj)  
                         else:
                             continue
+
+        self.bfImages.initMap()
+        self.trImages.initMap()   
         self.window.progressBar.done()
         return      
 
@@ -165,14 +168,15 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'Missing Folder', 'Texas Red folder cannot be found. Please select directory with Texas Red folder.')
             return
 
+        self.window.tabWidget.setCurrentIndex(1)
         self.getImages() # Initialize BF/TF
 
-        # Display first image and enable Pan 
+        # Display first image of TR and enable Pan 
         self.currImageIdx = 0
-        self.currImage = self.currImages.list[self.currImageIdx]
-        self.numImages = len(self.currImages.list)
+        self.currImage = self.currImageCol.list[self.currImageIdx]
+        self.numImages = len(self.currImageCol.list)
 
-        self.changeImageList(self.currImages.list) # Initialize brightfield list of image names
+        self.changeImageList(self.currImageCol.list) # Initializelist of image names
         self.enablePan(True)
 
         # Enable the next image button on the gui if multiple images are loaded
@@ -202,7 +206,7 @@ class ImageViewer:
                 QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
-        if self.currImages is not None:
+        if self.currImageCol is not None:
             self.currImageIdx = self.qImageNameItems.index(item)
             self.changeImage()
 
@@ -213,27 +217,27 @@ class ImageViewer:
     def loadImage(self, imgQt):
         ''' To load and display new image.'''
         self.qimage = imgQt
-        self.qpixmap = QPixmap(self.currImages.qlabel.size())
+        self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         if not self.qimage.isNull():
             # reset Zoom factor and Pan position
             self.zoomX = 1
             self.position = [0, 0]
             
-            self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width(), self.currImages.qlabel.height(), QtCore.Qt.KeepAspectRatioByExpanding)
+            self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width(), self.currImageCol.qlabel.height(), QtCore.Qt.KeepAspectRatioByExpanding)
             self.scaleUpdate()
         else:
             self.window.statusbar.showMessage('Cannot open this image! Try another one.', 5000)
 
     def scaleUpdate(self):
-        ''' This function actually draws the scaled image to currImages.qlabel.
+        ''' This function actually draws the scaled image to currImageCol.qlabel.
             It will be repeatedly called when zooming or panning.
             So, I tried to include only the necessary operations required just for these tasks. 
         '''
         if not self.qimage_scaled.isNull():
             # check if position is within limits to prevent unbounded panning.
             px, py = self.position
-            px = px if (px <= self.qimage_scaled.width() - self.currImages.qlabel.width()) else (self.qimage_scaled.width() - self.currImages.qlabel.width())
-            py = py if (py <= self.qimage_scaled.height() - self.currImages.qlabel.height()) else (self.qimage_scaled.height() - self.currImages.qlabel.height())
+            px = px if (px <= self.qimage_scaled.width() - self.currImageCol.qlabel.width()) else (self.qimage_scaled.width() - self.currImageCol.qlabel.width())
+            py = py if (py <= self.qimage_scaled.height() - self.currImageCol.qlabel.height()) else (self.qimage_scaled.height() - self.currImageCol.qlabel.height())
             px = px if (px >= 0) else 0
             py = py if (py >= 0) else 0
             self.position = (px, py)
@@ -245,10 +249,10 @@ class ImageViewer:
             painter = QPainter()
             painter.begin(self.qpixmap)
             painter.drawImage(QtCore.QPoint(0, 0), self.qimage_scaled,
-                    QtCore.QRect(self.position[0], self.position[1], self.currImages.qlabel.width(), self.currImages.qlabel.height()) )
+                    QtCore.QRect(self.position[0], self.position[1], self.currImageCol.qlabel.width(), self.currImageCol.qlabel.height()) )
             painter.end()
 
-            self.currImages.qlabel.setPixmap(self.qpixmap)
+            self.currImageCol.qlabel.setPixmap(self.qpixmap)
         else:
             pass
 
@@ -271,26 +275,26 @@ class ImageViewer:
     def zoomPlus(self):
         self.zoomX += 1
         px, py = self.position
-        px += self.currImages.qlabel.width()/2
-        py += self.currImages.qlabel.height()/2
+        px += self.currImageCol.qlabel.width()/2
+        py += self.currImageCol.qlabel.height()/2
         self.position = (px, py)
-        self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
+        self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
     def zoomMinus(self):
         if self.zoomX > 1:
             self.zoomX -= 1
             px, py = self.position
-            px -= self.currImages.qlabel.width()/2
-            py -= self.currImages.qlabel.height()/2
+            px -= self.currImageCol.qlabel.width()/2
+            py -= self.currImageCol.qlabel.height()/2
             self.position = (px, py)
-            self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
+            self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
             self.scaleUpdate()
 
     def resetZoom(self):
         self.zoomX = 1
         self.position = [0, 0]
-        self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
+        self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
     def enablePan(self, value):
@@ -309,11 +313,11 @@ class ImageViewer:
         if self.numImages > 0:
             if idx == 1:
                 self.window.checkBox.setCheckState(0) # Draw Ellipses for red channel
-                self.currImages = self.trImages 
+                self.currImageCol = self.trImages 
                 self.changeImageList(self.trImages.list)
             else:
                 self.window.checkBox.setCheckState(2) # Circles for Bright Field
-                self.currImages = self.bfImages 
+                self.currImageCol = self.bfImages 
                 self.changeImageList(self.bfImages.list)
 
     def changeThreshold(self):
@@ -325,7 +329,7 @@ class ImageViewer:
             self.currImage.radiusRange = self.window.radius_slider.getRange()
 
     def changeImage(self):
-        self.currImage = self.currImages.list[self.currImageIdx]
+        self.currImage = self.currImageCol.list[self.currImageIdx]
         self.loadImage(self.currImage.imgQt)
 
         self.window.disableDebounce()
@@ -333,10 +337,15 @@ class ImageViewer:
         self.window.radius_slider.setRange(self.currImage.radiusRange[0], self.currImage.radiusRange[1])
         self.window.enableDebounce()
 
+        if len(self.currImage.shapes) == 0:
+            self.window.debounce.start()
+
     def drawCircle(self):
-        self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
-        self.loadImage(self.currImage.imgQt)
+        if self.currImage is not None:
+            self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
+            self.loadImage(self.currImage.imgQt)
 
     def drawEllipse(self):
-        self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
-        self.loadImage(self.currImage.imgQt)
+        if self.currImage is not None:
+            self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
+            self.loadImage(self.currImage.imgQt)
