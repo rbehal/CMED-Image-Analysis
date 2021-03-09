@@ -184,24 +184,27 @@ class ImageViewer:
             self.onResize()
 
     def nextImg(self):
-        if self.currImageIdx < self.numImages -1:
-            self.currImageIdx += 1
-            self.changeImage()
-            self.qImageNameItems[self.currImageIdx].setSelected(True)
-        else:
-            QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
+        if self.currImage is not None:
+            if self.currImageIdx < self.numImages -1:
+                self.currImageIdx += 1
+                self.changeImage()
+                self.qImageNameItems[self.currImageIdx].setSelected(True)
+            else:
+                QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
 
     def prevImg(self):
-        if self.currImageIdx > 0:
-            self.currImageIdx -= 1
-            self.changeImage()
-            self.qImageNameItems[self.currImageIdx].setSelected(True)
-        else:
-            QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
+        if self.currImage is not None:
+            if self.currImageIdx > 0:
+                self.currImageIdx -= 1
+                self.changeImage()
+                self.qImageNameItems[self.currImageIdx].setSelected(True)
+            else:
+                QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
-        self.currImageIdx = self.qImageNameItems.index(item)
-        self.changeImage()
+        if self.currImages is not None:
+            self.currImageIdx = self.qImageNameItems.index(item)
+            self.changeImage()
 
     def action_move(self):
         if self.toggle_move.isChecked():
@@ -311,9 +314,22 @@ class ImageViewer:
                 self.currImages = self.bfImages 
                 self.changeImageList(self.bfImages.list)
 
+    def changeThreshold(self):
+        if self.currImage is not None:
+            self.currImage.threshold = self.window.threshold_slider.value()
+
+    def changeRadiusRange(self):
+        if self.currImage is not None:
+            self.currImage.radiusRange = self.window.radius_slider.getRange()
+
     def changeImage(self):
         self.currImage = self.currImages.list[self.currImageIdx]
         self.loadImage(self.currImage.imgQt)
+
+        self.window.disableDebounce()
+        self.window.threshold_box.setValue(self.currImage.threshold)
+        self.window.radius_slider.setRange(self.currImage.radiusRange[0], self.currImage.radiusRange[1])
+        self.window.enableDebounce()
 
     def drawCircle(self):
         self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange())

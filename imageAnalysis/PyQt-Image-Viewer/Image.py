@@ -16,6 +16,9 @@ class Image:
         self.imgArr = self.preprocessImg(self.path)
         self.imgQt = self.convertCvImage2QtImage(self.imgArr)
 
+        self.threshold = 120
+        self.radiusRange = (40, 500) if type_ == "BF" else (10, 100)
+
     def preprocessImg(self, img_path):
         image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         # Normalize image

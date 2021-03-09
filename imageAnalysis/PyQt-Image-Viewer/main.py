@@ -33,15 +33,14 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.toggle_move.toggled.connect(self.imageViewer.action_move)
 
         self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
-        # self.threshold_slider.valueChanged.connect(self.imageViewer.changeThreshold)
-        # self.threshold_box.valueChanged.connect(self.imageViewer.changeThreshold)
+        self.threshold_box.valueChanged.connect(self.imageViewer.changeThreshold)
 
         self.radius_slider.startValueChanged.connect(self.minRadius_box.setValue)
         self.radius_slider.endValueChanged.connect(self.maxRadius_box.setValue)
         self.minRadius_box.valueChanged.connect(self.radius_slider.setStart)
+        self.minRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)        
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
-
-        self.undo.clicked.connect(self.imageViewer.drawCircle) 
+        self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
     def createProgressBar(self, max_):
         self.progressBar = ProgressBar(max_)
@@ -51,11 +50,19 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.debounce.setInterval(msDelay)
         self.debounce.setSingleShot(True)
 
+        self.enableDebounce()      
+        
+        self.debounce.timeout.connect(self.imageViewer.drawCircle) # Initially draw circle on
+
+    def disableDebounce(self):
+        self.threshold_box.valueChanged.disconnect(self.debounce.start) 
+        self.minRadius_box.valueChanged.disconnect(self.debounce.start)
+        self.maxRadius_box.valueChanged.disconnect(self.debounce.start)  
+    
+    def enableDebounce(self):
         self.threshold_box.valueChanged.connect(self.debounce.start) 
         self.minRadius_box.valueChanged.connect(self.debounce.start)
-        self.maxRadius_box.valueChanged.connect(self.debounce.start)         
-
-        self.debounce.timeout.connect(self.imageViewer.drawCircle) # Initially draw circle on
+        self.maxRadius_box.valueChanged.connect(self.debounce.start)          
 
     def connectDrawCircle(self):
         try:
