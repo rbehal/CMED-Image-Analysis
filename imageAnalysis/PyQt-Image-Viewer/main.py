@@ -33,6 +33,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.toggle_move.toggled.connect(self.imageViewer.action_move)
 
         self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
+        self.checkBox.stateChanged.connect(self.checkBoxTick)
         self.threshold_box.valueChanged.connect(self.imageViewer.changeThreshold)
 
         self.radius_slider.startValueChanged.connect(self.minRadius_box.setValue)
@@ -51,8 +52,8 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.debounce.setSingleShot(True)
 
         self.enableDebounce()      
-        
-        self.debounce.timeout.connect(self.imageViewer.drawCircle) # Initially draw circle on
+
+        self.checkBox.setCheckState(2) # Initially set to draw circles
 
     def disableDebounce(self):
         self.threshold_box.valueChanged.disconnect(self.debounce.start) 
@@ -64,17 +65,17 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.minRadius_box.valueChanged.connect(self.debounce.start)
         self.maxRadius_box.valueChanged.connect(self.debounce.start)          
 
-    def connectDrawCircle(self):
+    def checkBoxTick(self, isChecked):
+        # Error if disconnect is used before connect
         try:
-            self.debounce.timeout.connect(self.imageViewer.drawCircle)              
-            self.debounce.timeout.disconnect(self.imageViewer.drawEllipse)
-        except:
-            pass
-
-    def connectDrawEllipse(self):
-        try:
-            self.debounce.timeout.connect(self.imageViewer.drawEllipse)              
-            self.debounce.timeout.disconnect(self.imageViewer.drawCircle)        
+            if isChecked:
+                # Connect draw circle
+                self.debounce.timeout.connect(self.imageViewer.drawCircle)              
+                self.debounce.timeout.disconnect(self.imageViewer.drawEllipse)
+            else:
+                # Connect draw  ellipse
+                self.debounce.timeout.connect(self.imageViewer.drawEllipse)              
+                self.debounce.timeout.disconnect(self.imageViewer.drawCircle)   
         except:
             pass
 

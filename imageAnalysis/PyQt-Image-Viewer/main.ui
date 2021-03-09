@@ -330,7 +330,7 @@ color:white;</string>
            <number>1000</number>
           </property>
           <property name="singleStep">
-           <number>25</number>
+           <number>5</number>
           </property>
           <property name="value">
            <number>250</number>
@@ -356,7 +356,7 @@ color:white;</string>
            <number>1000</number>
           </property>
           <property name="singleStep">
-           <number>25</number>
+           <number>5</number>
           </property>
           <property name="value">
            <number>1000</number>
@@ -410,7 +410,7 @@ color:white;</string>
       </item>
      </layout>
     </item>
-    <item row="1" column="0">
+    <item row="2" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <property name="spacing">
        <number>1</number>
@@ -691,6 +691,19 @@ color:white;</string>
        </widget>
       </item>
      </layout>
+    </item>
+    <item row="2" column="1">
+     <widget class="QCheckBox" name="checkBox">
+      <property name="toolTip">
+       <string extracomment="Default fit is ellipse."/>
+      </property>
+      <property name="toolTipDuration">
+       <number>3</number>
+      </property>
+      <property name="text">
+       <string>Enable Circle Fit</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>

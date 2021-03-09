@@ -308,9 +308,11 @@ class ImageViewer:
     def changeTab(self, idx):
         if self.numImages > 0:
             if idx == 1:
+                self.window.checkBox.setCheckState(0) # Draw Ellipses for red channel
                 self.currImages = self.trImages 
                 self.changeImageList(self.trImages.list)
             else:
+                self.window.checkBox.setCheckState(2) # Circles for Bright Field
                 self.currImages = self.bfImages 
                 self.changeImageList(self.bfImages.list)
 
@@ -336,4 +338,5 @@ class ImageViewer:
         self.loadImage(self.currImage.imgQt)
 
     def drawEllipse(self):
-        pass
+        self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
+        self.loadImage(self.currImage.imgQt)

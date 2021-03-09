@@ -37,7 +37,7 @@ class Image:
         self.imgArr = imgArr
         self.imgQt = self.convertCvImage2QtImage(self.imgArr)            
 
-    def drawCircle(self, threshold = 120, radius_range = (40, 500)):
+    def drawCircle(self, threshold, radius_range):
         img = self.preprocessImg(self.path)
 
         _, thresh = cv2.threshold(img, threshold, np.max(img), cv2.THRESH_BINARY)
@@ -70,5 +70,31 @@ class Image:
         self.setImg(colour_img)              
 
     def drawEllipse(self, threshold, radius_range):
-        pass
+        img = self.preprocessImg(self.path)
+
+        _, thresh = cv2.threshold(img, threshold, np.max(img), cv2.THRESH_BINARY)
+        raw_contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+        contours = []
+        for contour in raw_contours:
+            # Most items in raw contours are lines or small shapes
+            if cv2.contourArea(contour) < (np.pi * radius_range[0] ** 2):
+                continue
+            contours.append(contour)
+
+        ellipse_coords = []
+        for contour in contours:
+            (x,y),(w,h),ang = cv2.fitEllipse(contour)
+            if max(w,h) > radius_range[1]:
+                continue
+            ellipse_coords.append(((x,y),(w,h),ang)) 
+
+        colour_img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        colour = (255, 0, 0) # Red
+        thickness = 3
+
+        # Draw Ellipses
+        for (x,y),(w,h),ang in ellipse_coords:
+            colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
+        self.setImg(colour_img)             
 
