@@ -1,4 +1,6 @@
 from PyQt5.QtGui import QImage, QPixmap, QPainter
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from Image import Image
@@ -27,26 +29,33 @@ class ImageViewer:
         self.basePath = ""
         self.dayFolders = [] 
 
+        self.currImage = None
         self.currImageIdx = -1 
         self.numImages = -1
         self.qImageNameItems = []
 
-        self.trImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.bfImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.__connectEvents()
+        self.initializeQLabels()
 
-    def __connectEvents(self):
+    def initializeQLabels(self):
         # Mouse events
-        self.currImages.qlabel.mousePressEvent = self.mousePressAction
-        self.currImages.qlabel.mouseMoveEvent = self.mouseMoveAction
-        self.currImages.qlabel.mouseReleaseEvent = self.mouseReleaseAction
+        self.trImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.trImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor)
+        self.bfImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.bfImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor) 
+
+        self.trImages.qlabel.mousePressEvent = self.mousePressAction
+        self.trImages.qlabel.mouseMoveEvent = self.mouseMoveAction
+        self.trImages.qlabel.mouseReleaseEvent = self.mouseReleaseAction       
+        self.bfImages.qlabel.mousePressEvent = self.mousePressAction
+        self.bfImages.qlabel.mouseMoveEvent = self.mouseMoveAction
+        self.bfImages.qlabel.mouseReleaseEvent = self.mouseReleaseAction         
 
     def onResize(self):
         ''' Things to do when image is resized '''
         self.qpixmap = QPixmap(self.currImages.qlabel.size())
         self.qpixmap.fill(QtCore.Qt.gray)
         self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
-        self.update()
+        self.scaleUpdate()
 
     def getImages(self):
         ''' Get the names and paths of all the images in a directory. '''
@@ -57,7 +66,6 @@ class ImageViewer:
         self.bfImages.list = []
         self.trImages.list = []
 
-        
         # If data is timelapse divided into BF and Texas Red Folders
         if len(self.dayFolders) == 0:
             # Initializing progress bar
@@ -100,7 +108,7 @@ class ImageViewer:
             for day_num, day_path in self.dayFolders:
                 for file in os.listdir(day_path):
                     self.window.progressBar.increment()
-                    
+
                     im_path = os.path.join(day_path, file)
                     # All files with day structure have p00, so in id and name it's replaced with p[day_num]                    
                     id_ = "p{0:0=2d}".format(int(day_num)) 
@@ -158,11 +166,13 @@ class ImageViewer:
             return
 
         self.getImages() # Initialize BF/TF
-        self.changeImageList(self.currImages.list) # Initialize brightfield list of image names
-        self.numImages = len(self.currImages.list)
 
         # Display first image and enable Pan 
         self.currImageIdx = 0
+        self.currImage = self.currImages.list[self.currImageIdx]
+        self.numImages = len(self.currImages.list)
+
+        self.changeImageList(self.currImages.list) # Initialize brightfield list of image names
         self.enablePan(True)
 
         # Enable the next image button on the gui if multiple images are loaded
@@ -176,7 +186,7 @@ class ImageViewer:
     def nextImg(self):
         if self.currImageIdx < self.numImages -1:
             self.currImageIdx += 1
-            self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
+            self.changeImage()
             self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
@@ -184,18 +194,17 @@ class ImageViewer:
     def prevImg(self):
         if self.currImageIdx > 0:
             self.currImageIdx -= 1
-            self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
+            self.changeImage()
             self.qImageNameItems[self.currImageIdx].setSelected(True)
         else:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
         self.currImageIdx = self.qImageNameItems.index(item)
-        self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
+        self.changeImage()
 
     def action_move(self):
         if self.toggle_move.isChecked():
-            self.currImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor)
             self.enablePan(True)        
 
     def loadImage(self, imgQt):
@@ -208,11 +217,11 @@ class ImageViewer:
             self.position = [0, 0]
             
             self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width(), self.currImages.qlabel.height(), QtCore.Qt.KeepAspectRatioByExpanding)
-            self.update()
+            self.scaleUpdate()
         else:
             self.window.statusbar.showMessage('Cannot open this image! Try another one.', 5000)
 
-    def update(self):
+    def scaleUpdate(self):
         ''' This function actually draws the scaled image to currImages.qlabel.
             It will be repeatedly called when zooming or panning.
             So, I tried to include only the necessary operations required just for these tasks. 
@@ -251,7 +260,7 @@ class ImageViewer:
         if self.pressed:
             dx, dy = x - self.pressed.x(), y - self.pressed.y()         # Calculate the drag vector
             self.position = self.anchor[0] - dx, self.anchor[1] - dy    # Update pan position using drag vector
-            self.update()                                               # Show the image with udated pan position
+            self.scaleUpdate()                                               # Show the image with udated pan position
 
     def mouseReleaseAction(self, QMouseEvent):
         self.pressed = None                                             # Clear the starting point of drag vector
@@ -263,7 +272,7 @@ class ImageViewer:
         py += self.currImages.qlabel.height()/2
         self.position = (px, py)
         self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
-        self.update()
+        self.scaleUpdate()
 
     def zoomMinus(self):
         if self.zoomX > 1:
@@ -273,25 +282,25 @@ class ImageViewer:
             py -= self.currImages.qlabel.height()/2
             self.position = (px, py)
             self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
-            self.update()
+            self.scaleUpdate()
 
     def resetZoom(self):
         self.zoomX = 1
         self.position = [0, 0]
         self.qimage_scaled = self.qimage.scaled(self.currImages.qlabel.width() * self.zoomX, self.currImages.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
-        self.update()
+        self.scaleUpdate()
 
     def enablePan(self, value):
         self.panFlag = value
 
     def changeImageList(self, list_):
+        self.changeImage()
         # Make a list of qitems for the image names
         self.qImageNameItems = [QtWidgets.QListWidgetItem(img.name) for img in list_]
         self.window.qlist_images.clear()
         for item in self.qImageNameItems:
             self.window.qlist_images.addItem(item)
         self.qImageNameItems[self.currImageIdx].setSelected(True)            
-        self.loadImage(self.currImages.list[self.currImageIdx].imgQt)
 
     def changeTab(self, idx):
         if self.numImages > 0:
@@ -301,3 +310,14 @@ class ImageViewer:
             else:
                 self.currImages = self.bfImages 
                 self.changeImageList(self.bfImages.list)
+
+    def changeImage(self):
+        self.currImage = self.currImages.list[self.currImageIdx]
+        self.loadImage(self.currImage.imgQt)
+
+    def drawCircle(self):
+        self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
+        self.loadImage(self.currImage.imgQt)
+
+    def drawEllipse(self):
+        pass
