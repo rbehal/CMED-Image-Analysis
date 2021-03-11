@@ -17,6 +17,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
 
         imageLabels = (self.qlabel_img_bf, self.qlabel_img_tr)
         self.imageViewer = ImageViewer(imageLabels, self)
+
         self.__connectEvents()
         self.initDrawDebounce()
         self.showMaximized()
@@ -84,7 +85,20 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         if sys.platform == "win32":
             import ctypes
             appid = 'cmed Image Analysis.1.00' # arbitrary string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)      
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)  
+
+    def wheelEvent(self, event):
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if modifiers == QtCore.Qt.ControlModifier:
+            # Dividing by 120 gets number of notches on a typical scroll wheel. See QWheelEvent documentation
+            delta_notches = event.angleDelta().y() / 120
+            factor = delta_notches        
+            if factor > 0:
+                if self.imageViewer.currImage is not None:
+                    self.imageViewer.zoomPlus()
+            elif factor < 0:
+                if self.imageViewer.currImage is not None:
+                    self.imageViewer.zoomMinus()                
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
