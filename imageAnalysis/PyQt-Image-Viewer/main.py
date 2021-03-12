@@ -45,6 +45,8 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
+        self.undo.clicked.connect(self.imageViewer.test)
+
     def createProgressBar(self, max_):
         self.progressBar = ProgressBar(max_, self)
 
@@ -95,10 +97,10 @@ class Iwindow(QtWidgets.QMainWindow, gui):
             factor = delta_notches        
             if factor > 0:
                 if self.imageViewer.currImage is not None:
-                    self.imageViewer.zoomPlus()
+                    self.imageViewer.zoomPlus(True)
             elif factor < 0:
                 if self.imageViewer.currImage is not None:
-                    self.imageViewer.zoomMinus()                
+                    self.imageViewer.zoomMinus(True)                            
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

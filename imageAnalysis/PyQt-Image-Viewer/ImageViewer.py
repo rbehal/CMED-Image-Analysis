@@ -5,6 +5,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from Image import Image
 from ImageCollection import ImageCollection
+from math import factorial
 import os, re
 
 class ImageViewer:
@@ -23,6 +24,7 @@ class ImageViewer:
 
         self.zoomX = 1                        # Zoom factor w.r.t size of currImageCol.qlabel
         self.position = [0, 0]                # Position of top left corner of currImageCol.qlabel w.r.t. qimage_scaled
+        self.mousex, self.mousey = 0, 0
         self.panFlag = False                  # To enable or disable pan
         self.pressed = False                  # Mouse pressed
 
@@ -46,9 +48,11 @@ class ImageViewer:
         self.trImages.qlabel.mousePressEvent = self.mousePressAction
         self.trImages.qlabel.mouseMoveEvent = self.mouseMoveAction
         self.trImages.qlabel.mouseReleaseEvent = self.mouseReleaseAction       
+        self.trImages.qlabel.setMouseTracking(True)
         self.bfImages.qlabel.mousePressEvent = self.mousePressAction
         self.bfImages.qlabel.mouseMoveEvent = self.mouseMoveAction
         self.bfImages.qlabel.mouseReleaseEvent = self.mouseReleaseAction         
+        self.bfImages.qlabel.setMouseTracking(True)
 
     def onResize(self):
         ''' Things to do when image is resized '''
@@ -244,7 +248,6 @@ class ImageViewer:
 
             if self.zoomX == 1:
                 self.qpixmap.fill(QtCore.Qt.white)
-
             # the act of painting the qpixamp
             painter = QPainter()
             painter.begin(self.qpixmap)
@@ -257,36 +260,53 @@ class ImageViewer:
             pass
 
     def mousePressAction(self, QMouseEvent):
-        x, y = QMouseEvent.pos().x(), QMouseEvent.pos().y()
         if self.panFlag:
             self.pressed = QMouseEvent.pos()                            # Starting point of drag vector
             self.anchor = self.position                                 # Save the pan position when panning starts
 
     def mouseMoveAction(self, QMouseEvent):
-        x, y = QMouseEvent.pos().x(), QMouseEvent.pos().y()
+        self.mousex, self.mousey = QMouseEvent.pos().x(), QMouseEvent.pos().y()
         if self.pressed:
-            dx, dy = x - self.pressed.x(), y - self.pressed.y()         # Calculate the drag vector
+            dx, dy = self.mousex - self.pressed.x(), self.mousey - self.pressed.y()         # Calculate the drag vector
             self.position = self.anchor[0] - dx, self.anchor[1] - dy    # Update pan position using drag vector
             self.scaleUpdate()                                               # Show the image with udated pan position
 
     def mouseReleaseAction(self, QMouseEvent):
-        self.pressed = None                                             # Clear the starting point of drag vector
+        self.pressed = None                                             # Clear the starting point of drag vector        
 
-    def zoomPlus(self):
-        self.zoomX += 1
+    def zoomPlus(self, scroll=False):
         px, py = self.position
-        px += self.currImageCol.qlabel.width()/2
-        py += self.currImageCol.qlabel.height()/2
+
+        if scroll:
+            # These calculations come from calculating where the mousex is relative to the original image
+            # then multipying that by the new zoom, (zoomX + 1) --> ((self.mousex+px)/self.zoomX)*(self.zoomX+1)
+            img_x =  (self.mousex+px) + (self.mousex+px)/self.zoomX
+            img_y = (self.mousey+py) + (self.mousey+py)/self.zoomX
+            # Subtract mousex and mousey to get the new top left corner for scaleUpdate
+            px, py = img_x - self.mousex, img_y - self.mousey
+        else:
+            px += self.currImageCol.qlabel.width()/2
+            py += self.currImageCol.qlabel.height()/2
+        
+        self.zoomX += 1
         self.position = (px, py)
         self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
-    def zoomMinus(self):
+    def zoomMinus(self, scroll=False):
         if self.zoomX > 1:
-            self.zoomX -= 1
             px, py = self.position
-            px -= self.currImageCol.qlabel.width()/2
-            py -= self.currImageCol.qlabel.height()/2
+
+            if scroll: 
+                # Same as zoomPlus but reverse 
+                img_x = (self.mousex+px) - (self.mousex+px)/self.zoomX
+                img_y = (self.mousey+py) - (self.mousey+py)/self.zoomX
+                px, py = img_x - self.mousex, img_y - self.mousey
+            else:
+                px -= self.currImageCol.qlabel.width()/2
+                py -= self.currImageCol.qlabel.height()/2                
+
+            self.zoomX -= 1
             self.position = (px, py)
             self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
             self.scaleUpdate()
@@ -349,3 +369,9 @@ class ImageViewer:
         if self.currImage is not None:
             self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
             self.loadImage(self.currImage.imgQt)
+
+    def test(self):
+        print("Qimage:", self.qimage.width(), self.qimage.height())
+        print("Qimage scaled:", self.qimage_scaled.width(), self.qimage_scaled.height())
+
+
