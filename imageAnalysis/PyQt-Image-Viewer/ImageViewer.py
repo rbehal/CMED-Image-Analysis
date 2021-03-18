@@ -74,11 +74,11 @@ class ImageViewer:
         if len(self.dayFolders) == 0:
             # Initializing progress bar
             totalNumFiles = len(os.listdir(self.bfImages.path)) + len(os.listdir(self.trImages.path))
-            self.window.createProgressBar(totalNumFiles)
+            self.window.startPbar(totalNumFiles)
 
             # Populate Bright Field image list
             for file in os.listdir(self.bfImages.path):
-                self.window.progressBar.increment()
+                self.window.incrementPbar()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.bfImages.path, file)
 
@@ -93,7 +93,7 @@ class ImageViewer:
             
             # Populate Texas Red image list                    
             for file in os.listdir(self.trImages.path):
-                self.window.progressBar.increment()
+                self.window.incrementPbar()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.trImages.path, file)
 
@@ -105,13 +105,13 @@ class ImageViewer:
         else: # Or else it must be daily folders  
             # Initializing progress bar
             totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
-            self.window.createProgressBar(totalNumFiles)
+            self.window.startPbar(totalNumFiles)
 
             day_file_pattern = "_.{6}d(\d)"
 
             for day_num, day_path in self.dayFolders:
                 for file in os.listdir(day_path):
-                    self.window.progressBar.increment()
+                    self.window.incrementPbar()
 
                     im_path = os.path.join(day_path, file)
                     # All files with day structure have p00, so in id and name it's replaced with p[day_num]                    
@@ -132,7 +132,7 @@ class ImageViewer:
 
         self.bfImages.initMap()
         self.trImages.initMap()   
-        self.window.progressBar.done()
+        self.window.finishPbar()
         return      
 
     def selectDir(self):
@@ -367,11 +367,13 @@ class ImageViewer:
             window = self.window
             
             self.thread = DrawCircleThread(self.currImage, thresh, rng, window)
-            self.thread.finished.connect(self.loadImage)        
+
+            self.thread.finished.connect(self.loadImage)   
+            self.thread.startPbar.connect(self.window.startPbar)   
+            self.thread.incrementPbar.connect(self.window.incrementPbar)    
+            self.thread.finishPbar.connect(self.window.finishPbar)    
+
             self.thread.start()
-            # pbar = self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange(), self.window)
-            # self.loadImage()
-            # pbar.done()
 
     def drawEllipse(self):
         if self.currImage is not None:
@@ -380,41 +382,49 @@ class ImageViewer:
             window = self.window
             
             self.thread = DrawEllipseThread(self.currImage, thresh, rng, window)
-            self.thread.finished.connect(self.loadImage)        
+
+            self.thread.finished.connect(self.loadImage)  
+            self.thread.startPbar.connect(self.window.startPbar)   
+            self.thread.incrementPbar.connect(self.window.incrementPbar)    
+            self.thread.finishPbar.connect(self.window.finishPbar)    
+
             self.thread.start()            
-            # pbar = self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange(), self.window)
-            # self.loadImage()
-            # pbar.done()
 
-    def test(self):
-        print("Qimage:", self.qimage.width(), self.qimage.height())
-        print("Qimage scaled:", self.qimage_scaled.width(), self.qimage_scaled.height())
-
+    def redraw(self):
+        if self.currImage is not None:
+            self.currImage.redraw()
+            self.loadImage()
 
 class DrawCircleThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()
 
     def __init__(self, img, thresh, rng, window, parent=None):
         super(DrawCircleThread, self).__init__(parent)
         self.img = img
         self.thresh = thresh
         self.range = rng
-        self.window = window
 
     def run(self):
-        self.img.drawCircle(self.thresh, self.range, self.window)
+        self.img.drawCircle(self.thresh, self.range, self)
+        self.finishPbar.emit()
         self.finished.emit()
 
 class DrawEllipseThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()    
 
     def __init__(self, img, thresh, rng, window, parent=None):
         super(DrawEllipseThread, self).__init__(parent)
         self.img = img
         self.thresh = thresh
         self.range = rng
-        self.window = window
 
     def run(self):
-        self.img.drawEllipse(self.thresh, self.range, self.window)
+        self.img.drawEllipse(self.thresh, self.range, self)
+        self.finishPbar.emit()
         self.finished.emit()

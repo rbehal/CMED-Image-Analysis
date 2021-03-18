@@ -1,8 +1,8 @@
 from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
 from qrangeslider import QRangeSlider
-from ProgressBar import ProgressBar
 
 from ImageViewer import ImageViewer
 import sys, os, re
@@ -45,11 +45,21 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
-        self.undo.clicked.connect(self.imageViewer.test)
+        self.undo.clicked.connect(self.imageViewer.redraw)
 
-    def createProgressBar(self, max_):
-        self.progressBar = ProgressBar(max_, self)
-        return self.progressBar
+    def startPbar(self, max_):
+        self.progressBar.setValue(0)
+        self.progressBar.setMaximum(max_)
+        QApplication.processEvents() 
+
+    def incrementPbar(self):
+        self.progressBar.setValue(self.progressBar.value() + 1) 
+        QApplication.processEvents() 
+
+    def finishPbar(self):
+        self.progressBar.setValue(self.progressBar.maximum())
+        self.progressBar.setValue(0)
+        QApplication.processEvents() 
 
     def initDrawDebounce(self, msDelay=1000):
         self.debounce = QTimer()
