@@ -42,7 +42,7 @@ class Image:
         self.imgArr = imgArr
         self.imgQt = self.convertCvImage2QtImage(self.imgArr)            
 
-    def drawCircle(self, threshold, radius_range):
+    def drawCircle(self, threshold, radius_range, progress_bar):
         img = self.preprocessImg(self.path)
 
         _, thresh = cv2.threshold(img, threshold, np.max(img), cv2.THRESH_BINARY)
@@ -58,6 +58,7 @@ class Image:
                 continue
             contours.append(contour)    
 
+        # pbar = progress_bar.createProgressBar(len(contours)+2)
         # Get coordinates of circles
         circle_coords = []
         for contour in contours:
@@ -65,6 +66,7 @@ class Image:
             if r > radius_range[1]:
                 continue
             circle_coords.append(((x, y), r))
+            # pbar.increment()
 
         # Check if spheroids have ellipses in them -- Only keep the ones that do
         if self.type == "BF":
@@ -87,9 +89,11 @@ class Image:
         # Draw circles
         for (x, y), r in circle_coords:
             colour_img = cv2.circle(colour_img, (int(x),int(y)), int(r), colour, thickness) 
-        self.setImg(colour_img)              
+        self.setImg(colour_img)    
 
-    def drawEllipse(self, threshold, radius_range):
+        # return pbar          
+
+    def drawEllipse(self, threshold, radius_range, progress_bar):
         img = self.preprocessImg(self.path)
 
         _, thresh = cv2.threshold(img, threshold, np.max(img), cv2.THRESH_BINARY)
@@ -103,11 +107,13 @@ class Image:
             contours.append(contour)
 
         ellipse_coords = []
+        # pbar = progress_bar.createProgressBar(len(contours)+2)
         for contour in contours:
             (x,y),(w,h),ang = cv2.fitEllipse(contour)
             if max(w,h) > radius_range[1]:
                 continue
             ellipse_coords.append(((x,y),(w,h),ang)) 
+            # pbar.increment()
 
         self.shapes = deepcopy(ellipse_coords)   
 
@@ -119,6 +125,8 @@ class Image:
         for (x,y),(w,h),ang in ellipse_coords:
             colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
         self.setImg(colour_img)  
+
+        # return pbar
 
     def isPointInsideCircle(self, point, circle_coords):
         x, y = point

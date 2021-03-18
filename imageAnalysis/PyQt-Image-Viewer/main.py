@@ -49,8 +49,9 @@ class Iwindow(QtWidgets.QMainWindow, gui):
 
     def createProgressBar(self, max_):
         self.progressBar = ProgressBar(max_, self)
+        return self.progressBar
 
-    def initDrawDebounce(self, msDelay=750):
+    def initDrawDebounce(self, msDelay=1000):
         self.debounce = QTimer()
         self.debounce.setInterval(msDelay)
         self.debounce.setSingleShot(True)

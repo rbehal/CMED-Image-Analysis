@@ -218,9 +218,9 @@ class ImageViewer:
         if self.toggle_move.isChecked():
             self.enablePan(True)        
 
-    def loadImage(self, imgQt):
+    def loadImage(self):
         ''' To load and display new image.'''
-        self.qimage = imgQt
+        self.qimage = self.currImage.imgQt
         self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         if not self.qimage.isNull():
             # reset Zoom factor and Pan position
@@ -350,7 +350,7 @@ class ImageViewer:
 
     def changeImage(self):
         self.currImage = self.currImageCol.list[self.currImageIdx]
-        self.loadImage(self.currImage.imgQt)
+        self.loadImage()
 
         self.window.disableDebounce()
         self.window.threshold_box.setValue(self.currImage.threshold)
@@ -362,16 +362,59 @@ class ImageViewer:
 
     def drawCircle(self):
         if self.currImage is not None:
-            self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
-            self.loadImage(self.currImage.imgQt)
+            thresh = self.window.threshold_slider.value()
+            rng = self.window.radius_slider.getRange()
+            window = self.window
+            
+            self.thread = DrawCircleThread(self.currImage, thresh, rng, window)
+            self.thread.finished.connect(self.loadImage)        
+            self.thread.start()
+            # pbar = self.currImage.drawCircle(self.window.threshold_slider.value(), self.window.radius_slider.getRange(), self.window)
+            # self.loadImage()
+            # pbar.done()
 
     def drawEllipse(self):
         if self.currImage is not None:
-            self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange())
-            self.loadImage(self.currImage.imgQt)
+            thresh = self.window.threshold_slider.value()
+            rng = self.window.radius_slider.getRange()
+            window = self.window
+            
+            self.thread = DrawEllipseThread(self.currImage, thresh, rng, window)
+            self.thread.finished.connect(self.loadImage)        
+            self.thread.start()            
+            # pbar = self.currImage.drawEllipse(self.window.threshold_slider.value(), self.window.radius_slider.getRange(), self.window)
+            # self.loadImage()
+            # pbar.done()
 
     def test(self):
         print("Qimage:", self.qimage.width(), self.qimage.height())
         print("Qimage scaled:", self.qimage_scaled.width(), self.qimage_scaled.height())
 
 
+class DrawCircleThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, img, thresh, rng, window, parent=None):
+        super(DrawCircleThread, self).__init__(parent)
+        self.img = img
+        self.thresh = thresh
+        self.range = rng
+        self.window = window
+
+    def run(self):
+        self.img.drawCircle(self.thresh, self.range, self.window)
+        self.finished.emit()
+
+class DrawEllipseThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, img, thresh, rng, window, parent=None):
+        super(DrawEllipseThread, self).__init__(parent)
+        self.img = img
+        self.thresh = thresh
+        self.range = rng
+        self.window = window
+
+    def run(self):
+        self.img.drawEllipse(self.thresh, self.range, self.window)
+        self.finished.emit()
