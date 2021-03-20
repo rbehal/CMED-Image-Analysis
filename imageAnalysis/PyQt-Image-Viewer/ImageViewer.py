@@ -174,6 +174,7 @@ class ImageViewer:
 
         self.window.tabWidget.setCurrentIndex(1)
         self.getImages() # Initialize BF/TF
+        self.resetZoom()
 
         # Display first image of TR and enable Pan 
         self.currImageIdx = 0
@@ -226,10 +227,6 @@ class ImageViewer:
         self.qimage = self.currImage.imgQt
         self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         if not self.qimage.isNull():
-            # reset Zoom factor and Pan position
-            self.zoomX = 1
-            self.position = [0, 0]
-            
             self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width(), self.currImageCol.qlabel.height(), QtCore.Qt.KeepAspectRatioByExpanding)
             self.scaleUpdate()
         else:
