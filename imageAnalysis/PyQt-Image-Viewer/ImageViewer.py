@@ -220,6 +220,9 @@ class ImageViewer:
 
     def loadImage(self):
         ''' To load and display new image.'''
+        if self.currImageCol.baseImage is not None:
+            self.currImage.redraw()
+        
         self.qimage = self.currImage.imgQt
         self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         if not self.qimage.isNull():
@@ -360,6 +363,22 @@ class ImageViewer:
         if len(self.currImage.shapes) == 0:
             self.window.debounce.start()
 
+    def setBaseImage(self):
+        if self.currImage is not None:
+            self.trImages.baseImage = self.trImages.map[self.currImage.id]
+            self.bfImages.baseImage = self.bfImages.map[self.currImage.id]
+            self.trImages.baseImage.redraw()
+            self.bfImages.baseImage.redraw()
+            self.loadImage()
+
+    def clearBaseImage(self):
+        if self.currImage is not None:
+            self.trImages.baseImage = None
+            self.bfImages.baseImage = None
+            self.trImages.map[self.currImage.id].redraw()
+            self.bfImages.map[self.currImage.id].redraw()            
+            self.loadImage()
+
     def drawCircle(self):
         if self.currImage is not None:
             thresh = self.window.threshold_slider.value()
@@ -368,12 +387,12 @@ class ImageViewer:
             
             self.thread = DrawCircleThread(self.currImage, thresh, rng, window)
 
-            self.thread.finished.connect(self.loadImage)   
             self.thread.startPbar.connect(self.window.startPbar)   
             self.thread.incrementPbar.connect(self.window.incrementPbar)    
             self.thread.finishPbar.connect(self.window.finishPbar)    
+            self.thread.finished.connect(self.loadImage)  
 
-            self.thread.start()
+            self.thread.start()               
 
     def drawEllipse(self):
         if self.currImage is not None:
@@ -383,17 +402,19 @@ class ImageViewer:
             
             self.thread = DrawEllipseThread(self.currImage, thresh, rng, window)
 
-            self.thread.finished.connect(self.loadImage)  
             self.thread.startPbar.connect(self.window.startPbar)   
             self.thread.incrementPbar.connect(self.window.incrementPbar)    
             self.thread.finishPbar.connect(self.window.finishPbar)    
+            self.thread.finished.connect(self.loadImage)  
 
-            self.thread.start()            
+            self.thread.start()
 
-    def redraw(self):
+    def recalculate(self):
         if self.currImage is not None:
-            self.currImage.redraw()
-            self.loadImage()
+            if self.window.checkBox.isChecked():
+                self.drawCircle()
+            else:
+                self.drawEllipse()
 
 class DrawCircleThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()

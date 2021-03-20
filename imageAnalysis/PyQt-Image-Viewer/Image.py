@@ -23,6 +23,7 @@ class Image:
         self.radiusRange = (40, 500) if type_ == "BF" else (10, 100)
 
         self.shapes = []
+        self.base_shapes = {}
         self.ellipse = False # Keeps track of whether the shapes are ellipses or circles
 
     def preprocessImg(self, img_path):
@@ -76,35 +77,34 @@ class Image:
             circle_coords.append([(x, y), r, str(circle_num)])
             circle_num = circle_num + 1
 
-        # Check if spheroids have ellipses in them -- Only keep the ones that do
-        circ_num = 1
+        # Check if spheroids have sensors in them -- Only keep the ones that do
         if self.type == "BF" and self.id in self.view.trImages.map:
             trImage = self.view.trImages.map[self.id]
             if len(trImage.shapes) > 0:
                 temp = []
-                letter_map = {0:"a",1:"b",2:"c",3:"d",4:"e"} # Letter map for ellipse naming
+                letter_map = {0:"a",1:"b",2:"c",3:"d",4:"e"} # Letter map for sensor naming
 
                 for i in range(len(circle_coords)):
                     circle_coord = circle_coords[i]
-                    ellipse_num = 0
+                    sensor_num = 0
 
                     for j in range(len(trImage.shapes)):
-
                         shape = trImage.shapes[j]
                         center_point = shape[0]
 
-                        ellipseInCircle = self.isPointInsideCircle(center_point, circle_coord)
-                        if ellipseInCircle and circle_coord not in temp:
+                        sensorInCircle = self.isPointInsideCircle(center_point, circle_coord)
+                        if sensorInCircle and circle_coord not in temp:
                             temp.append(circle_coord)
-                            # Ellipses are numbered with the corresponding cicle number + an incrementing letter
-                            shape[len(shape)-1] = circle_coord[len(circle_coord)-1] + letter_map[ellipse_num]
-                            ellipse_num = ellipse_num + 1
-                        elif ellipseInCircle:
-                            shape[len(shape)-1] = circle_coord[len(circle_coord)-1] + letter_map[ellipse_num]
-                            ellipse_num = ellipse_num + 1
+                            # Sensors are numbered with the corresponding cicle number + an incrementing letter
+                            shape[-1] = circle_coord[-1] + letter_map[sensor_num]
+                            sensor_num = sensor_num + 1
+                        elif sensorInCircle:
+                            shape[-1] = circle_coord[-1] + letter_map[sensor_num]
+                            sensor_num = sensor_num + 1
 
                 circle_coords = temp
 
+        self.base_shapes = {}
         self.shapes = deepcopy(circle_coords)
         self.ellipse = False
 
@@ -115,8 +115,6 @@ class Image:
         # Draw circles
         for (x, y), r, circ_num in circle_coords:
             colour_img = cv2.circle(colour_img, (int(x),int(y)), int(r), colour, thickness) 
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            colour_img = cv2.putText(colour_img, circ_num, (int(x + r + 10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)
         self.setImg(colour_img)    
 
 
@@ -147,6 +145,7 @@ class Image:
             ellipse_coords.append([(x,y),(w,h),ang,str(ellipse_num)])  
             ellipse_num = ellipse_num + 1           
 
+        self.base_shapes = {}
         self.shapes = deepcopy(ellipse_coords)   
         self.ellipse = True
 
@@ -157,15 +156,24 @@ class Image:
         # Draw Ellipses
         for (x,y),(w,h),ang,num in ellipse_coords:
             colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            colour_img = cv2.putText(colour_img, num, (int(x+max(w,h)+10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)            
-        self.setImg(colour_img)  
+        self.setImg(colour_img) 
 
-    def isPointInsideCircle(self, point, circle_coords):
-        x, y = point
-        (x_center, y_center), r, _ = circle_coords
-        dist = r**2 - ((x_center-x)**2 + (y_center-y)**2);
-        return dist >= 0
+    def drawBaseShapes(self, colour_img):
+        if not bool(self.base_shapes):
+            return
+
+        colour = (255, 0, 0) # Red
+        thickness = 3        
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        if self.ellipse:
+            for ((x,y),(w,h),ang,num),_ in self.base_shapes.values():            
+                colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
+                colour_img = cv2.putText(colour_img, num, (int(x+max(w,h)+10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)            
+        else:
+            for ((x, y),r,circ_num),_ in self.base_shapes.values():
+                colour_img = cv2.circle(colour_img, (int(x),int(y)), int(r), colour, thickness) 
+                colour_img = cv2.putText(colour_img, circ_num, (int(x + r + 10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)                                    
 
     def redraw(self): 
         colour = (255, 0, 0) # Red
@@ -174,22 +182,86 @@ class Image:
 
         img = self.preprocessImg(self.path)
         colour_img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-
-        if self.ellipse:
-            for (x,y),(w,h),ang,num in self.shapes:
-                # If it only is an integer, it is not within a spheroid, so ignore
-                if not self.isInt(num):
-                    colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
-                    colour_img = cv2.putText(colour_img, num, (int(x+max(w,h)+10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)             
+        if self.type == "TR":
+            base_img = self.view.trImages.baseImage
         else:
-            for (x, y), r, circ_num in self.shapes:
-                # Ignore if sensor is not within a spheroid
-                if self.type == "TR" and self.isInt(circ_num):
+            base_img = self.view.bfImages.baseImage
+
+        shapes_to_remove = []
+        if self.ellipse:
+            for i in range(len(self.shapes)):
+                (x,y),(w,h),ang,num = self.shapes[i]
+                if base_img is not None:
+                    # Finding closest shapes to base image shapes and drawing them
+                    self.getClosestBaseShape(i)
+                # If it only is an integer, it is not within a spheroid, so ignore
+                elif self.type == "TR" and not self.isPointInAnySpheroid((x,y)):
+                    shapes_to_remove.append(self.shapes[i])
+                else:
+                    # Draw all in self.shapes if base image is None
+                    colour_img = cv2.ellipse(colour_img, ((x,y), (w,h), ang), colour, thickness); 
+        else:
+            for i in range(len(self.shapes)):
+                (x, y), r, circ_num = self.shapes[i]              
+                if base_img is not None:
+                    self.getClosestBaseShape(i)
+                elif self.type == "TR" and not self.isPointInAnySpheroid((x,y)): # Ignore if sensor is not within a spheroid
+                    shapes_to_remove.append(self.shapes[i])
                     continue
                 else:
                     colour_img = cv2.circle(colour_img, (int(x),int(y)), int(r), colour, thickness) 
-                    colour_img = cv2.putText(colour_img, circ_num, (int(x + r + 10), int(y)), font, 2, colour, thickness, cv2.LINE_AA)            
-        self.setImg(colour_img)  
+        if base_img is not None:
+            self.drawBaseShapes(colour_img)
+        map(self.shapes.remove, shapes_to_remove)
+        self.setImg(colour_img) 
+
+    ## Helper Funcitons ##
+    def isPointInsideCircle(self, point, circle_coords):
+        x, y = point
+        (x_center, y_center), r, _ = circle_coords
+        dist = r**2 - ((x_center-x)**2 + (y_center-y)**2);
+        return dist >= 0
+
+    def isPointInAnySpheroid(self, point):
+        bfImage = self.view.bfImages.map[self.id]
+        for shape in bfImage.shapes:
+            if self.isPointInsideCircle(point, shape):
+                return True
+        return False
+
+    def getClosestBaseShape(self, idx):
+        if self.type == "TR":
+            base_shapes = self.view.trImages.baseImage.shapes
+        else:
+            base_shapes = self.view.bfImages.baseImage.shapes
+        
+        # Finding closest base shape to the current shape
+        min_dist = float('inf')
+        closest_shape = None
+        for shape in base_shapes:
+            if self.type == "TR" and self.isInt(shape[-1]):
+                continue
+            dist = self.distance(self.shapes[idx][0], shape[0])
+            if dist < min_dist:
+                min_dist = dist
+                closest_shape = shape
+
+        # Replace in self.base_shapes if it is closer to the closest base shape
+        # than any other shape in this image
+        if closest_shape is None:
+            return
+        closest_shape_num = closest_shape[-1]
+        closest_base_shape = self.base_shapes.get(closest_shape_num)
+        if closest_base_shape is None or min_dist < closest_base_shape[1]:
+            if min_dist > 150:
+                return
+            temp = deepcopy(self.shapes[idx])
+            temp[-1] = closest_shape[-1]
+
+            self.base_shapes[closest_shape_num] = temp, min_dist   
+    
+    def distance(self, p0, p1):
+        return np.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)
 
     def isInt(self, num):
         try: 

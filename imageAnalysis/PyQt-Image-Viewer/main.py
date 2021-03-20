@@ -45,7 +45,10 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
-        self.undo.clicked.connect(self.imageViewer.redraw)
+        self.calculate.clicked.connect(self.imageViewer.recalculate)
+        self.draw.clicked.connect(self.imageViewer.loadImage)
+        self.set_base.clicked.connect(self.imageViewer.setBaseImage)
+        self.clear_base.clicked.connect(self.imageViewer.clearBaseImage)
 
     def startPbar(self, max_):
         self.progressBar.setValue(0)

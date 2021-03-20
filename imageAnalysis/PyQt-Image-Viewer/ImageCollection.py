@@ -6,6 +6,8 @@ class ImageCollection:
         self.path = "" # Full folder path
         self.list = [] # List of Image objects
 
+        self.baseImage = None
+
         self.map = {}
 
     def initMap(self):
@@ -15,3 +17,4 @@ class ImageCollection:
     def reset(self):
         self.list = []
         self.map = {}
+        self.baseImage = None

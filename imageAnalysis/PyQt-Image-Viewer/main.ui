@@ -88,29 +88,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="save_im">
-        <property name="cursor">
-         <cursorShape>PointingHandCursor</cursorShape>
-        </property>
-        <property name="toolTip">
-         <string notr="true" extracomment="Save Image">Save Image</string>
-        </property>
-        <property name="text">
-         <string>...</string>
-        </property>
-        <property name="icon">
-         <iconset>
-          <normaloff>icons/download.png</normaloff>icons/download.png</iconset>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>20</width>
-          <height>20</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QToolButton" name="prev_im">
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
@@ -240,19 +217,19 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="undo">
+       <widget class="QToolButton" name="calculate">
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="toolTip">
-         <string>Undo</string>
+         <string>Calculate</string>
         </property>
         <property name="text">
          <string>...</string>
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/undo2.png</normaloff>icons/undo2.png</iconset>
+          <normaloff>icons/calculate.png</normaloff>icons/calculate.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -263,19 +240,19 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="clear_all">
+       <widget class="QToolButton" name="draw">
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="toolTip">
-         <string>Clear All</string>
+         <string>Redraw</string>
         </property>
         <property name="text">
          <string>...</string>
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/loop2.png</normaloff>icons/loop2.png</iconset>
+          <normaloff>icons/draw.png</normaloff>icons/draw.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -286,19 +263,42 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="redo">
+       <widget class="QToolButton" name="set_base">
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
         <property name="toolTip">
-         <string>Redo</string>
+         <string extracomment="Set Base Image">Set Base Image</string>
         </property>
         <property name="text">
          <string>...</string>
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/redo2.png</normaloff>icons/redo2.png</iconset>
+          <normaloff>icons/set_base.png</normaloff>icons/set_base.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="clear_base">
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="toolTip">
+         <string notr="true" extracomment="Clear Base Image">Clear Base Image</string>
+        </property>
+        <property name="text">
+         <string>...</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>icons/clear_base.png</normaloff>icons/clear_base.png</iconset>
         </property>
         <property name="iconSize">
          <size>
