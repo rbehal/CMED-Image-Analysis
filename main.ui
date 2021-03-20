@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>icons/app_icon.png</normaloff>icons/app_icon.png</iconset>
+    <normaloff>assets/icons/app_icon.png</normaloff>assets/icons/app_icon.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">background-color: rgb(255, 255, 255);</string>
@@ -52,7 +52,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/move.png</normaloff>icons/move.png</iconset>
+          <normaloff>assets/icons/move.png</normaloff>assets/icons/move.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -100,7 +100,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/arrow-left.png</normaloff>icons/arrow-left.png</iconset>
+          <normaloff>assets/icons/arrow-left.png</normaloff>assets/icons/arrow-left.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -123,7 +123,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/arrow-right.png</normaloff>icons/arrow-right.png</iconset>
+          <normaloff>assets/icons/arrow-right.png</normaloff>assets/icons/arrow-right.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -153,7 +153,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/zoom-in.png</normaloff>icons/zoom-in.png</iconset>
+          <normaloff>assets/icons/zoom-in.png</normaloff>assets/icons/zoom-in.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -176,7 +176,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/enlarge2.png</normaloff>icons/enlarge2.png</iconset>
+          <normaloff>assets/icons/enlarge2.png</normaloff>assets/icons/enlarge2.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -196,7 +196,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/zoom-out.png</normaloff>icons/zoom-out.png</iconset>
+          <normaloff>assets/icons/zoom-out.png</normaloff>assets/icons/zoom-out.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -229,7 +229,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/calculate.png</normaloff>icons/calculate.png</iconset>
+          <normaloff>assets/icons/calculate.png</normaloff>assets/icons/calculate.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -252,7 +252,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/draw.png</normaloff>icons/draw.png</iconset>
+          <normaloff>assets/icons/draw.png</normaloff>assets/icons/draw.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -275,7 +275,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/set_base.png</normaloff>icons/set_base.png</iconset>
+          <normaloff>assets/icons/set_base.png</normaloff>assets/icons/set_base.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -298,7 +298,7 @@
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>icons/clear_base.png</normaloff>icons/clear_base.png</iconset>
+          <normaloff>assets/icons/clear_base.png</normaloff>assets/icons/clear_base.png</iconset>
         </property>
         <property name="iconSize">
          <size>

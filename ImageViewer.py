@@ -174,7 +174,6 @@ class ImageViewer:
 
         self.window.tabWidget.setCurrentIndex(1)
         self.getImages() # Initialize BF/TF
-        self.resetZoom()
 
         # Display first image of TR and enable Pan 
         self.currImageIdx = 0
@@ -183,7 +182,7 @@ class ImageViewer:
 
         self.changeImageList(self.currImageCol.list) # Initializelist of image names
         self.enablePan(True)
-
+        self.resetZoom()
         # Enable the next image button on the gui if multiple images are loaded
         if self.numImages > 1:
             self.window.next_im.setEnabled(True)
