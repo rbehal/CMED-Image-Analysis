@@ -18,7 +18,7 @@
     <normaloff>assets/icons/app_icon.png</normaloff>assets/icons/app_icon.png</iconset>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: rgb(255, 255, 255);</string>
+   <string notr="true"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -718,6 +718,97 @@ color:white;</string>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1167</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="styleSheet">
+     <string notr="true">QMenuBar::item:selected {    
+    background-color: rgb(244,164,96);
+}</string>
+    </property>
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuExport_as">
+     <property name="title">
+      <string>Export as</string>
+     </property>
+     <addaction name="menu_export_excel"/>
+     <addaction name="menu_export_images"/>
+    </widget>
+    <addaction name="menuExport_as"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QMenuBar::item:selected {    
+    background-color: rgb(244,164,96);
+}</string>
+    </property>
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="menu_redraw"/>
+    <addaction name="menu_recalculate"/>
+    <addaction name="menu_reset_pan"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="styleSheet">
+     <string notr="true">QMenuBar::item:selected {    
+    background-color: rgb(244,164,96);
+}</string>
+    </property>
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="menu_options"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuTools"/>
+  </widget>
+  <action name="menu_export_excel">
+   <property name="text">
+    <string>Excel (.xlsx)</string>
+   </property>
+  </action>
+  <action name="menu_export_images">
+   <property name="text">
+    <string>Images (.png)</string>
+   </property>
+  </action>
+  <action name="menu_options">
+   <property name="text">
+    <string>Options</string>
+   </property>
+  </action>
+  <action name="menu_redraw">
+   <property name="text">
+    <string>Recalculate</string>
+   </property>
+  </action>
+  <action name="menu_recalculate">
+   <property name="text">
+    <string>Redraw</string>
+   </property>
+  </action>
+  <action name="menu_reset_pan">
+   <property name="text">
+    <string>Reset Pan and Zoom</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

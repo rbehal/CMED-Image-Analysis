@@ -7,6 +7,7 @@ from Image import Image
 from ImageCollection import ImageCollection
 from math import factorial
 import os, re
+from numpy import pi
 
 class ImageViewer:
     ''' Basic image viewer class to show an image with zoom and pan functionaities.
@@ -220,6 +221,9 @@ class ImageViewer:
 
     def loadImage(self):
         ''' To load and display new image.'''
+        if self.currImage is None:
+            return
+
         if self.currImageCol.baseImage is not None:
             self.currImage.redraw()
         
@@ -311,6 +315,8 @@ class ImageViewer:
             self.scaleUpdate()
 
     def resetZoom(self):
+        if self.currImage is None:
+            return
         self.zoomX = 1
         self.position = [0, 0]
         self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
@@ -379,9 +385,8 @@ class ImageViewer:
         if self.currImage is not None:
             thresh = self.window.threshold_slider.value()
             rng = self.window.radius_slider.getRange()
-            window = self.window
             
-            self.thread = DrawCircleThread(self.currImage, thresh, rng, window)
+            self.thread = DrawCircleThread(self.currImage, thresh, rng, self.window)
 
             self.thread.startPbar.connect(self.window.startPbar)   
             self.thread.incrementPbar.connect(self.window.incrementPbar)    
@@ -394,9 +399,8 @@ class ImageViewer:
         if self.currImage is not None:
             thresh = self.window.threshold_slider.value()
             rng = self.window.radius_slider.getRange()
-            window = self.window
             
-            self.thread = DrawEllipseThread(self.currImage, thresh, rng, window)
+            self.thread = DrawEllipseThread(self.currImage, thresh, rng, self.window)
 
             self.thread.startPbar.connect(self.window.startPbar)   
             self.thread.incrementPbar.connect(self.window.incrementPbar)    
@@ -411,6 +415,20 @@ class ImageViewer:
                 self.drawCircle()
             else:
                 self.drawEllipse()
+
+    def exportExcel(self):
+        if self.currImage is None:
+            return
+
+        self.thread = ExportThread(self.bfImages, self.trImages, "excel")
+        
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+        # self.thread.finished.connect(self.loadImage)  
+
+        self.thread.start()            
+        
 
 class DrawCircleThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
@@ -445,3 +463,100 @@ class DrawEllipseThread(QtCore.QThread):
         self.img.drawEllipse(self.thresh, self.range, self)
         self.finishPbar.emit()
         self.finished.emit()
+
+class ExportThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal()
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()        
+
+    def __init__(self, bfImages, trImages, type_, parent=None):
+        super(ExportThread, self).__init__(parent)
+        self.bfImages = bfImages
+        self.trImages = trImages
+        self.type = type_
+        self.scale = 0.638 # 0.638 pixels/um
+
+    def run(self):
+        if self.type == "excel":
+            self.exportExcel() 
+        self.finished.emit()
+
+    def exportExcel(self):
+        data = self.getData()
+        print(data)
+        pass
+
+    def getShapeData(self, isEllipse, shape):
+        # [area,x,y,major,minor,adjusted angle]
+        if isEllipse:
+            (x,y), (w,h), ang, _ = shape
+            x, y, w, h = x/self.scale, y/self.scale, w/self.scale, h/self.scale
+            area = w * h * pi / 4
+            major = max(w,h)
+            minor = min(w,h)
+            # OpenCV to ImageJ Angle Conversion
+            if ang > 90:
+                ang = 270 - ang
+            else:
+                ang = 90 - ang
+            # Adjust angle from original Excel Sheet
+            if ang > 90:
+                ang = 180 - ang
+            data = [str(area),str(x),str(y),str(major),str(minor),str(ang)]            
+        else:
+            (x, y), r, _ = shape
+            x, y, r = x/self.scale, y/self.scale, r/self.scale
+            area = pi*r**2
+            data = [str(area),str(x),str(y),str(r),str(r),"0"]
+        return data
+
+    def getData(self):
+        if self.bfImages.baseImage is None:
+            return
+
+        data = {} # Data formatted as dictionary. {"day_id": spheroid_map, sensor_map}
+                  # Spheroid/sensor map formatted as follows: {"shape_id" : [area,x,y,major,minor,adjusted angle]}
+
+        bfDayIds = sorted(self.bfImages.map.keys())
+        trDayIds = sorted(self.trImages.map.keys())
+
+        # Get lists of Ids of shapes
+        spheroidIds = []
+        sensorIds = []
+        for id_ in bfDayIds:
+            bfImg = self.bfImages.map[id_]
+            trImg = self.trImages.map[id_]
+            if bfImg is self.bfImages.baseImage:
+                spheroid_map = {}
+                sensor_map = {}                
+                for shape in bfImg.shapes:
+                    shape_id = shape[-1]
+                    spheroid_map[shape_id] = self.getShapeData(bfImg.ellipse, shape)
+                    spheroidIds.append(shape_id)
+                for shape in trImg.shapes:
+                    shape_id = shape[-1]
+                    if not trImg.isInt(shape_id):
+                        sensor_map[shape_id] = self.getShapeData(trImg.ellipse, shape)
+                        sensorIds.append(shape_id)
+                data[id_] = (spheroid_map, sensor_map)
+                break
+        bfDayIds.sort()
+        trDayIds.sort()
+
+        for id_ in bfDayIds:
+            bfImg = self.bfImages.map[id_]
+            trImg = self.trImages.map[id_]
+            if bfImg is self.bfImages.baseImage:
+                continue
+
+            spheroid_map = {}
+            sensor_map = {}    
+            
+            for shape_id, (shape, _) in bfImg.base_shapes.items():  
+                spheroid_map[shape_id] = self.getShapeData(bfImg.ellipse, shape)
+            for shape_id, (shape, _) in trImg.base_shapes.items():
+                sensor_map[shape_id] = self.getShapeData(trImg.ellipse, shape)
+
+            data[id_] = (spheroid_map, sensor_map)
+        return data
