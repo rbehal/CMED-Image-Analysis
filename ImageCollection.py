@@ -7,6 +7,7 @@ class ImageCollection:
         self.list = [] # List of Image objects
 
         self.baseImage = None
+        self.baseId = None
 
         self.map = {}
 

@@ -8,6 +8,7 @@ from ImageCollection import ImageCollection
 from math import factorial
 import os, re
 from numpy import pi
+import xlsxwriter
 
 class ImageViewer:
     ''' Basic image viewer class to show an image with zoom and pan functionaities.
@@ -193,22 +194,24 @@ class ImageViewer:
             self.onResize()
 
     def nextImg(self):
-        if self.currImage is not None:
-            if self.currImageIdx < self.numImages -1:
-                self.currImageIdx += 1
-                self.changeImage()
-                self.qImageNameItems[self.currImageIdx].setSelected(True)
-            else:
-                QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
+        if self.currImage is None:
+            return
+        if self.currImageIdx < self.numImages -1:
+            self.currImageIdx += 1
+            self.changeImage()
+            self.qImageNameItems[self.currImageIdx].setSelected(True)
+        else:
+            QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
 
     def prevImg(self):
-        if self.currImage is not None:
-            if self.currImageIdx > 0:
-                self.currImageIdx -= 1
-                self.changeImage()
-                self.qImageNameItems[self.currImageIdx].setSelected(True)
-            else:
-                QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
+        if self.currImage is None:
+            return
+        if self.currImageIdx > 0:
+            self.currImageIdx -= 1
+            self.changeImage()
+            self.qImageNameItems[self.currImageIdx].setSelected(True)
+        else:
+            QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
         if self.currImageCol is not None:
@@ -366,61 +369,67 @@ class ImageViewer:
             self.window.debounce.start()
 
     def setBaseImage(self):
-        if self.currImage is not None:
-            self.trImages.baseImage = self.trImages.map[self.currImage.id]
-            self.bfImages.baseImage = self.bfImages.map[self.currImage.id]
-            self.trImages.baseImage.redraw()
-            self.bfImages.baseImage.redraw()
-            self.loadImage()
+        if self.currImage is None:
+            return
+        self.trImages.baseImage, self.bfImages.baseImage = self.trImages.map[self.currImage.id], self.bfImages.map[self.currImage.id]
+        self.trImages.baseId, self.bfImages.baseId = self.currImage.id, self.currImage.id
+        self.trImages.baseImage.redraw()
+        self.bfImages.baseImage.redraw()
+        self.loadImage()
 
     def clearBaseImage(self):
-        if self.currImage is not None:
-            self.trImages.baseImage = None
-            self.bfImages.baseImage = None
-            self.trImages.map[self.currImage.id].redraw()
-            self.bfImages.map[self.currImage.id].redraw()            
-            self.loadImage()
+        if self.currImage is None:
+            return
+        self.trImages.baseImage = None
+        self.bfImages.baseImage = None
+        self.trImages.map[self.currImage.id].redraw()
+        self.bfImages.map[self.currImage.id].redraw()            
+        self.loadImage()
 
     def drawCircle(self):
-        if self.currImage is not None:
-            thresh = self.window.threshold_slider.value()
-            rng = self.window.radius_slider.getRange()
-            
-            self.thread = DrawCircleThread(self.currImage, thresh, rng, self.window)
+        if self.currImage is None:
+            return
+        thresh = self.window.threshold_slider.value()
+        rng = self.window.radius_slider.getRange()
+        
+        self.thread = DrawCircleThread(self.currImage, thresh, rng, self.window)
 
-            self.thread.startPbar.connect(self.window.startPbar)   
-            self.thread.incrementPbar.connect(self.window.incrementPbar)    
-            self.thread.finishPbar.connect(self.window.finishPbar)    
-            self.thread.finished.connect(self.loadImage)  
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+        self.thread.finished.connect(self.loadImage)  
 
-            self.thread.start()               
+        self.thread.start()               
 
     def drawEllipse(self):
-        if self.currImage is not None:
-            thresh = self.window.threshold_slider.value()
-            rng = self.window.radius_slider.getRange()
-            
-            self.thread = DrawEllipseThread(self.currImage, thresh, rng, self.window)
+        if self.currImage is None:
+            return
+        thresh = self.window.threshold_slider.value()
+        rng = self.window.radius_slider.getRange()
+        
+        self.thread = DrawEllipseThread(self.currImage, thresh, rng, self.window)
 
-            self.thread.startPbar.connect(self.window.startPbar)   
-            self.thread.incrementPbar.connect(self.window.incrementPbar)    
-            self.thread.finishPbar.connect(self.window.finishPbar)    
-            self.thread.finished.connect(self.loadImage)  
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+        self.thread.finished.connect(self.loadImage)  
 
-            self.thread.start()
+        self.thread.start()
 
     def recalculate(self):
-        if self.currImage is not None:
-            if self.window.checkBox.isChecked():
-                self.drawCircle()
-            else:
-                self.drawEllipse()
+        if self.currImage is None:
+            return
+        if self.window.checkBox.isChecked():
+            self.drawCircle()
+        else:
+            self.drawEllipse()
 
     def exportExcel(self):
         if self.currImage is None:
             return
 
-        self.thread = ExportThread(self.bfImages, self.trImages, "excel")
+        path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
+        self.thread = ExportThread(self.bfImages, self.trImages, "excel", path)
         
         self.thread.startPbar.connect(self.window.startPbar)   
         self.thread.incrementPbar.connect(self.window.incrementPbar)    
@@ -470,11 +479,12 @@ class ExportThread(QtCore.QThread):
     incrementPbar = QtCore.pyqtSignal()
     finishPbar = QtCore.pyqtSignal()        
 
-    def __init__(self, bfImages, trImages, type_, parent=None):
+    def __init__(self, bfImages, trImages, type_, path, parent=None):
         super(ExportThread, self).__init__(parent)
         self.bfImages = bfImages
         self.trImages = trImages
         self.type = type_
+        self.path = path
         self.scale = 0.638 # 0.638 pixels/um
 
     def run(self):
@@ -483,9 +493,149 @@ class ExportThread(QtCore.QThread):
         self.finished.emit()
 
     def exportExcel(self):
-        data = self.getData()
-        print(data)
-        pass
+        data, spheroidIds, sensorIds = self.getData()
+        # Name of file
+        path = self.path + self.bfImages.path.split("/")[-2] + " - Dimensions.xlsx"
+
+        # Create new workbook and sheet
+        workbook = xlsxwriter.Workbook(path)
+        worksheet = workbook.add_worksheet("Raw Data")
+
+        # Excel formats
+        h1_format = workbook.add_format({
+            'bold': 1,
+            'underline': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'fg_color': '#FFD966'})
+        h2_format = workbook.add_format({
+            'bold': 1,
+            'underline': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'fg_color': '#F4B084'})
+        h3_format = workbook.add_format({
+            'bold': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'fg_color': '#C6E0B4'})
+        id_format = workbook.add_format({
+            'bold': 1,
+            'align': 'left',
+            'fg_color': '#8EA9DB'})
+        data_format = workbook.add_format({'align': 'right','fg_color': '#C6E0B4'})
+        data_format.set_num_format('0.00')
+
+        # Create map of spheroids:sensor count (sensors within spheroids)
+        sensorCount = {}
+        for spheroidId in spheroidIds:
+            sensorList = []
+            for sensorId in sensorIds:
+                if int(spheroidId) == int(sensorId[0]):
+                    sensorList.append(sensorId)
+            sensorCount[spheroidId] = sensorList      
+
+        headerRow = ["ID#","AREA","X","Y","MAJOR","MINOR","ADJ. ANGLE","ID#","AREA","X","Y","MAJOR","MINOR","ADJ. ANGLE"]
+
+        def writeRawDayData(startRow, startCol, dayId):
+            rowNum, colNum = startRow, startCol
+            
+            # Convert spheroid and sensor data into arrays of strings for Excel write
+            spheroidRows = []
+            for id_ in spheroidIds:
+                rowData = data[dayId][0].get(id_,['','','','','','',''])
+                spheroidRows.append([str(id_)] + rowData)
+            sensorRows = []
+            for id_ in sensorIds:
+                rowData = data[dayId][1].get(id_,['','','','','','',''])
+                sensorRows.append([str(id_)] + rowData)       
+            
+            # Header Rows
+            worksheet.merge_range(startRow, startCol, startRow, startCol + 13, "DAY{}".format(dayId.upper()), h1_format)
+            rowNum = rowNum + 1
+            worksheet.merge_range(rowNum, startCol, rowNum, startCol + 6, "SPHEROID", h2_format)
+            worksheet.merge_range(rowNum, startCol + 7, rowNum, startCol + 13, "SENSOR", h2_format)
+            rowNum = rowNum + 1
+            for i in range(len(headerRow)):
+                entry = headerRow[i]
+                if i == 0 or i == 7:
+                    worksheet.write(rowNum, colNum, entry, id_format)
+                else:
+                    worksheet.write(rowNum, colNum, entry, h3_format)
+                colNum = colNum + 1
+            rowNum = rowNum + 1
+            colNum = startCol
+
+            # Spheroid Rows
+            data_start = rowNum, colNum
+
+            for row in spheroidRows:
+                for j in range(len(row)):
+                    entry = row[j]
+                    if j > 0:
+                        if entry:
+                            worksheet.write_number(rowNum, colNum, float(entry), data_format)
+                        else:
+                            worksheet.write(rowNum, colNum, entry, data_format)
+                    else:
+                        worksheet.write_number(rowNum, colNum, float(entry), id_format)
+                    colNum = colNum + 1
+                currRow = rowNum
+
+                rowNum = rowNum + 1
+                colNum = startCol   
+
+                if row == spheroidRows[-1]:
+                    break
+                while rowNum < currRow + len(sensorCount[row[0]]) + 1:
+                    for j in range(len(row)):
+                        if j > 0:
+                            worksheet.write(rowNum, colNum, "", data_format)
+                        else:
+                            worksheet.write(rowNum, colNum, "", id_format)
+                        colNum = colNum + 1     
+                    rowNum = rowNum + 1
+                    colNum = startCol
+
+            # Sensor Rows
+            rowNum, colNum = data_start
+            colNum = colNum + 7
+
+            for i in range(len(sensorRows)):
+                row = sensorRows[i]
+                for j in range(len(row)):
+                    entry = row[j]
+                    if j > 0:
+                        if entry:
+                            worksheet.write_number(rowNum, colNum, float(entry), data_format)
+                        else:
+                            worksheet.write(rowNum, colNum, entry, data_format)
+                    else:
+                        worksheet.write(rowNum, colNum, entry, id_format)
+                    colNum = colNum + 1
+
+                if i < len(sensorRows) - 1:
+                    if int(sensorRows[i+1][0][0]) != int(row[0][0]):
+                        rowNum = rowNum + 1  
+                        colNum = startCol + 7
+                        for j in range(len(row)):
+                            if j > 0:
+                                worksheet.write(rowNum, colNum, "", data_format)
+                            else:
+                                worksheet.write(rowNum, colNum, "", id_format)
+                            colNum = colNum + 1     
+
+                rowNum = rowNum + 1            
+                colNum = startCol + 7    
+
+        # Write to Excel file
+        dayIds = sorted(data.keys())
+        rowNum, colNum = 0, 0
+        for i in range(len(dayIds)):
+            id_ = dayIds[i]
+            writeRawDayData(rowNum, colNum+(15*i), id_)
+        worksheet.set_column(0, 15*len(dayIds), 10)
+        workbook.close()    
 
     def getShapeData(self, isEllipse, shape):
         # [area,x,y,major,minor,adjusted angle]
@@ -512,51 +662,48 @@ class ExportThread(QtCore.QThread):
         return data
 
     def getData(self):
-        if self.bfImages.baseImage is None:
+        bfBaseImg = self.bfImages.baseImage
+        trBaseImg = self.trImages.baseImage
+        if bfBaseImg is None:
             return
 
         data = {} # Data formatted as dictionary. {"day_id": spheroid_map, sensor_map}
                   # Spheroid/sensor map formatted as follows: {"shape_id" : [area,x,y,major,minor,adjusted angle]}
 
-        bfDayIds = sorted(self.bfImages.map.keys())
-        trDayIds = sorted(self.trImages.map.keys())
+        dayIds = sorted(self.bfImages.map.keys())
 
-        # Get lists of Ids of shapes
+        # Get lists of Ids of base shapes
         spheroidIds = []
         sensorIds = []
-        for id_ in bfDayIds:
-            bfImg = self.bfImages.map[id_]
-            trImg = self.trImages.map[id_]
-            if bfImg is self.bfImages.baseImage:
-                spheroid_map = {}
-                sensor_map = {}                
-                for shape in bfImg.shapes:
-                    shape_id = shape[-1]
-                    spheroid_map[shape_id] = self.getShapeData(bfImg.ellipse, shape)
-                    spheroidIds.append(shape_id)
-                for shape in trImg.shapes:
-                    shape_id = shape[-1]
-                    if not trImg.isInt(shape_id):
-                        sensor_map[shape_id] = self.getShapeData(trImg.ellipse, shape)
-                        sensorIds.append(shape_id)
-                data[id_] = (spheroid_map, sensor_map)
-                break
-        bfDayIds.sort()
-        trDayIds.sort()
 
-        for id_ in bfDayIds:
+        spheroid_map = {}
+        sensor_map = {}                
+        for shape in bfBaseImg.shapes:
+            shape_id = shape[-1]
+            spheroid_map[shape_id] = self.getShapeData(bfBaseImg.ellipse, shape)
+            spheroidIds.append(shape_id)
+        for shape in trBaseImg.shapes:
+            shape_id = shape[-1]
+            if not trBaseImg.isInt(shape_id):
+                sensor_map[shape_id] = self.getShapeData(trBaseImg.ellipse, shape)
+                sensorIds.append(shape_id)
+        
+        data[self.bfImages.baseId] = (spheroid_map, sensor_map)
+    
+        for id_ in dayIds:
             bfImg = self.bfImages.map[id_]
             trImg = self.trImages.map[id_]
             if bfImg is self.bfImages.baseImage:
                 continue
-
             spheroid_map = {}
             sensor_map = {}    
-            
-            for shape_id, (shape, _) in bfImg.base_shapes.items():  
-                spheroid_map[shape_id] = self.getShapeData(bfImg.ellipse, shape)
-            for shape_id, (shape, _) in trImg.base_shapes.items():
-                sensor_map[shape_id] = self.getShapeData(trImg.ellipse, shape)
 
+            if bfImg.base_shapes:
+                for shape_id, (shape, _) in bfImg.base_shapes.items():  
+                    spheroid_map[shape_id] = self.getShapeData(bfImg.ellipse, shape)
+            if trImg.base_shapes:
+                for shape_id, (shape, _) in trImg.base_shapes.items():
+                    sensor_map[shape_id] = self.getShapeData(trImg.ellipse, shape)
             data[id_] = (spheroid_map, sensor_map)
-        return data
+
+        return data, sorted(spheroidIds), sorted(sensorIds)
