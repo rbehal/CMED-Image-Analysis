@@ -494,12 +494,16 @@ class ExportThread(QtCore.QThread):
 
     def exportExcel(self):
         data, spheroidIds, sensorIds = self.getData()
+        if len(data) == 0:
+            return
+
         # Name of file
         path = self.path + self.bfImages.path.split("/")[-2] + " - Dimensions.xlsx"
 
         # Create new workbook and sheet
         workbook = xlsxwriter.Workbook(path)
-        worksheet = workbook.add_worksheet("Raw Data")
+        rawDataSheet = workbook.add_worksheet("Raw Data")
+        calcDataSheet = workbook.add_worksheet("Calculated Data")
 
         # Excel formats
         h1_format = workbook.add_format({
@@ -525,6 +529,8 @@ class ExportThread(QtCore.QThread):
             'fg_color': '#8EA9DB'})
         data_format = workbook.add_format({'align': 'right','fg_color': '#C6E0B4'})
         data_format.set_num_format('0.00')
+        strain_format = workbook.add_format({'align': 'right','fg_color': '#C6E0B4'})
+        strain_format.set_num_format('0.00000000')        
 
         # Create map of spheroids:sensor count (sensors within spheroids)
         sensorCount = {}
@@ -551,17 +557,17 @@ class ExportThread(QtCore.QThread):
                 sensorRows.append([str(id_)] + rowData)       
             
             # Header Rows
-            worksheet.merge_range(startRow, startCol, startRow, startCol + 13, "DAY{}".format(dayId.upper()), h1_format)
+            rawDataSheet.merge_range(startRow, startCol, startRow, startCol + 13, "DAY{}".format(dayId.upper()), h1_format)
             rowNum = rowNum + 1
-            worksheet.merge_range(rowNum, startCol, rowNum, startCol + 6, "SPHEROID", h2_format)
-            worksheet.merge_range(rowNum, startCol + 7, rowNum, startCol + 13, "SENSOR", h2_format)
+            rawDataSheet.merge_range(rowNum, startCol, rowNum, startCol + 6, "SPHEROID", h2_format)
+            rawDataSheet.merge_range(rowNum, startCol + 7, rowNum, startCol + 13, "SENSOR", h2_format)
             rowNum = rowNum + 1
             for i in range(len(headerRow)):
                 entry = headerRow[i]
                 if i == 0 or i == 7:
-                    worksheet.write(rowNum, colNum, entry, id_format)
+                    rawDataSheet.write(rowNum, colNum, entry, id_format)
                 else:
-                    worksheet.write(rowNum, colNum, entry, h3_format)
+                    rawDataSheet.write(rowNum, colNum, entry, h3_format)
                 colNum = colNum + 1
             rowNum = rowNum + 1
             colNum = startCol
@@ -574,11 +580,11 @@ class ExportThread(QtCore.QThread):
                     entry = row[j]
                     if j > 0:
                         if entry:
-                            worksheet.write_number(rowNum, colNum, float(entry), data_format)
+                            rawDataSheet.write_number(rowNum, colNum, float(entry), data_format)
                         else:
-                            worksheet.write(rowNum, colNum, entry, data_format)
+                            rawDataSheet.write(rowNum, colNum, entry, data_format)
                     else:
-                        worksheet.write_number(rowNum, colNum, float(entry), id_format)
+                        rawDataSheet.write_number(rowNum, colNum, float(entry), id_format)
                     colNum = colNum + 1
                 currRow = rowNum
 
@@ -590,9 +596,9 @@ class ExportThread(QtCore.QThread):
                 while rowNum < currRow + len(sensorCount[row[0]]) + 1:
                     for j in range(len(row)):
                         if j > 0:
-                            worksheet.write(rowNum, colNum, "", data_format)
+                            rawDataSheet.write(rowNum, colNum, "", data_format)
                         else:
-                            worksheet.write(rowNum, colNum, "", id_format)
+                            rawDataSheet.write(rowNum, colNum, "", id_format)
                         colNum = colNum + 1     
                     rowNum = rowNum + 1
                     colNum = startCol
@@ -607,34 +613,130 @@ class ExportThread(QtCore.QThread):
                     entry = row[j]
                     if j > 0:
                         if entry:
-                            worksheet.write_number(rowNum, colNum, float(entry), data_format)
+                            rawDataSheet.write_number(rowNum, colNum, float(entry), data_format)
                         else:
-                            worksheet.write(rowNum, colNum, entry, data_format)
+                            rawDataSheet.write(rowNum, colNum, entry, data_format)
                     else:
-                        worksheet.write(rowNum, colNum, entry, id_format)
+                        rawDataSheet.write(rowNum, colNum, entry, id_format)
                     colNum = colNum + 1
 
+                # Writes a blank row with proper formatting if the sensor NUMBER changes
                 if i < len(sensorRows) - 1:
-                    if int(sensorRows[i+1][0][0]) != int(row[0][0]):
+                    currRowNum = row[0][0:2] if row[0][0:2].isdigit() else row[0][0]
+                    nextRowNum = sensorRows[i+1][0][0:2] if sensorRows[i+1][0][0:2].isdigit() else sensorRows[i+1][0][0]
+
+                    if int(currRowNum) != int(nextRowNum):
                         rowNum = rowNum + 1  
                         colNum = startCol + 7
                         for j in range(len(row)):
                             if j > 0:
-                                worksheet.write(rowNum, colNum, "", data_format)
+                                rawDataSheet.write(rowNum, colNum, "", data_format)
                             else:
-                                worksheet.write(rowNum, colNum, "", id_format)
+                                rawDataSheet.write(rowNum, colNum, "", id_format)
                             colNum = colNum + 1     
 
                 rowNum = rowNum + 1            
                 colNum = startCol + 7    
 
-        # Write to Excel file
+        # Write to Raw Data to Excel file
         dayIds = sorted(data.keys())
         rowNum, colNum = 0, 0
         for i in range(len(dayIds)):
             id_ = dayIds[i]
             writeRawDayData(rowNum, colNum+(15*i), id_)
-        worksheet.set_column(0, 15*len(dayIds), 10)
+        rawDataSheet.set_column(0, 15*len(dayIds), 10)
+        if len(dayIds) < 2:
+            workbook.close()
+            return
+
+        headerRow = ["ID#","SPHEROID AREA STRAIN","RADIAL STRAIN","CIRCUMFERENTIAL STRAIN"]
+        def writeCalcDayData(startRow, startCol, dayId):
+            rowNum, colNum = startRow, startCol
+            
+            # Get strain data for row
+            strainRows = []
+            for sensorId in sensorIds:
+                # Data indices: -1: Adj. Angle, 0: Area, 3: Major, 4: Minor
+                row = []
+
+                sensorNum = sensorId[0][0:2] if sensorId[0][0:2].isdigit() else sensorId[0][0]
+                day0 = dayIds[0]
+
+                currSpheroidData = data[dayId][0].get(sensorNum, '')
+                day0SpheroidData = data[day0][0].get(sensorNum, '')
+
+                if not currSpheroidData or not day0SpheroidData:
+                    row = [sensorId, '', '', '']
+                    strainRows.append(row)
+                    continue
+
+                areaStrain = (float(currSpheroidData[0]) - float(day0SpheroidData[0])) / float(day0SpheroidData[0]) 
+
+                currSensorData = data[dayId][1].get(sensorId, '')
+                day0SensorData = data[day0][1].get(sensorId, '')
+
+                if not currSensorData or not day0SensorData:
+                    row = [sensorId, areaStrain, '', '']
+                    strainRows.append(row)
+                    continue    
+
+                if float(currSensorData[-1]) - float(currSpheroidData[-1]) < 45:
+                    radialStrain = (float(currSensorData[4]) - float(day0SensorData[3])) / float(day0SensorData[3])
+                    circStrain = (float(currSensorData[3]) - float(day0SensorData[4])) / float(day0SensorData[4])
+                else:
+                    radialStrain = (float(currSensorData[3]) - float(day0SensorData[4])) / float(day0SensorData[4])
+                    circStrain = (float(currSensorData[4]) - float(day0SensorData[3])) / float(day0SensorData[3])
+
+                row = [sensorId, areaStrain, radialStrain, circStrain]
+                strainRows.append(row)
+                
+            # Writing header rows
+            calcDataSheet.merge_range(startRow, startCol, startRow, startCol + 3, "DAY{}".format(dayId.upper()), h1_format)
+            rowNum = rowNum + 1
+            for i, entry in enumerate(headerRow): 
+                if i == 0:
+                    calcDataSheet.write(rowNum, colNum, entry, id_format)
+                else:
+                    calcDataSheet.write(rowNum, colNum, entry, h3_format)
+                colNum = colNum + 1
+            colNum = startCol
+            rowNum = rowNum + 1
+
+            # Writing to calculated data spreadsheet
+            for i, row in enumerate(strainRows):
+                for j in range(len(row)):
+                    entry = row[j]
+                    if j > 0:
+                        if entry:
+                            calcDataSheet.write_number(rowNum, colNum, float(entry), strain_format)
+                        else:
+                            calcDataSheet.write(rowNum, colNum, entry, strain_format)
+                    else:
+                        calcDataSheet.write(rowNum, colNum, entry, id_format)
+                    colNum = colNum + 1
+
+                if i < len(strainRows) - 1:
+                    currRowNum = row[0][0:2] if row[0][0:2].isdigit() else row[0][0]
+                    nextRowNum = strainRows[i+1][0][0:2] if strainRows[i+1][0][0:2].isdigit() else strainRows[i+1][0][0]
+
+                    if int(currRowNum) != int(nextRowNum):
+                        rowNum = rowNum + 1  
+                        colNum = startCol
+                        for j in range(len(row)):
+                            if j > 0:
+                                calcDataSheet.write(rowNum, colNum, "", strain_format)
+                            else:
+                                calcDataSheet.write(rowNum, colNum, "", id_format)
+                            colNum = colNum + 1     
+
+                rowNum = rowNum + 1            
+                colNum = startCol        
+
+        rowNum, colNum = 0, 0
+        for i, id_ in enumerate(dayIds[1:]):
+            writeCalcDayData(rowNum, colNum+(5*i), id_)
+        calcDataSheet.set_column(0, 5*(len(dayIds)-1), 20) 
+
         workbook.close()    
 
     def getShapeData(self, isEllipse, shape):

@@ -82,7 +82,7 @@ class Image:
             trImage = self.view.trImages.map[self.id]
             if len(trImage.shapes) > 0:
                 temp = []
-                letter_map = {0:"a",1:"b",2:"c",3:"d",4:"e"} # Letter map for sensor naming
+                letter_map = {0:"a",1:"b",2:"c",3:"d",4:"e",5:"f",6:"g",7:"h"} # Letter map for sensor naming
 
                 for i in range(len(circle_coords)):
                     circle_coord = circle_coords[i]
