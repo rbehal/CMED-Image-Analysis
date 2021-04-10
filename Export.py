@@ -1,6 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import xlsxwriter
 from numpy import pi
+import cv2
 
 class ExportThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
@@ -23,6 +24,10 @@ class ExportThread(QtCore.QThread):
             self.exportAllExcel() 
         elif self.type == "single-excel":
             self.exportSingleExcel()
+        elif self.type == "all-images":
+            self.exportAllImages()
+        elif self.type == "single-image":
+            self.exportSingleImage()
         else:
             pass
         self.finished.emit()
@@ -262,7 +267,6 @@ class ExportThread(QtCore.QThread):
         workbook.close() 
 
     def exportAllExcel(self):
-        # map(lambda img: img.redraw(),self.bfImages.list + self.trImages.list)    
         for img in self.bfImages.list + self.trImages.list:
             img.redraw()
 
@@ -354,3 +358,17 @@ class ExportThread(QtCore.QThread):
         
         data[self.bfImages.baseId] = (spheroid_map, sensor_map)
         return data, sorted(spheroidIds), sorted(sensorIds), dayIds
+
+    def exportAllImages(self):
+        allImages = self.bfImages.list + self.trImages.list 
+        for img in allImages:
+            img.redraw()     
+        for img in allImages:
+            filename = img.name.split(".")[0]
+            cv2.imwrite(self.path + filename + ".png", img.imgArr)
+            
+    def exportSingleImage(self):
+        # Here self.bfImages and self.trImages are currImg and complement Image objects
+        for img in (self.bfImages, self.trImages):
+            filename = img.name.split(".")[0]
+            cv2.imwrite(self.path + filename + ".png", img.imgArr)        

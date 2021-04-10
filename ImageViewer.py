@@ -448,9 +448,41 @@ class ImageViewer:
         self.thread.incrementPbar.connect(self.window.incrementPbar)    
         self.thread.finishPbar.connect(self.window.finishPbar)    
 
-        self.thread.start()                    
-        
+        self.thread.start()      
 
+    def exportAllImages(self):
+        if self.currImage is None:
+            return
+
+        path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
+        path = path + "Marked Images/"
+        os.mkdir(path)
+
+        self.thread = ExportThread(self.bfImages, self.trImages, "all-images", path)
+        
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+
+        self.thread.start()   
+        
+    def exportSingleImage(self):
+        if self.currImage is None:
+            return
+
+        path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
+        path = path + "Marked Images/"
+        os.mkdir(path)
+
+        currImg, currImgComplement = self.trImages.map[self.currImage.id], self.bfImages.map[self.currImage.id]
+        self.thread = ExportThread(currImg, currImgComplement, "single-image", path)
+        
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+
+        self.thread.start()           
+        
 class DrawCircleThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
