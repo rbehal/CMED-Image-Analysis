@@ -51,7 +51,8 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.clear_base.clicked.connect(self.imageViewer.clearBaseImage)
 
         # Menu Bar
-        self.menu_export_excel.triggered.connect(self.imageViewer.exportExcel)
+        self.menu_all_excel.triggered.connect(self.imageViewer.exportAllExcel)
+        self.menu_single_excel.triggered.connect(self.imageViewer.exportSingleExcel)
         self.menu_redraw.triggered.connect(self.imageViewer.loadImage)
         self.menu_recalculate.triggered.connect(self.imageViewer.recalculate)
         self.menu_reset_pan.triggered.connect(self.imageViewer.resetZoom)
