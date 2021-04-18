@@ -724,7 +724,7 @@ color:white;</string>
      <x>0</x>
      <y>0</y>
      <width>1167</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -743,8 +743,22 @@ color:white;</string>
      <property name="title">
       <string>Export as</string>
      </property>
-     <addaction name="menu_export_excel"/>
-     <addaction name="menu_export_images"/>
+     <widget class="QMenu" name="menuSingle">
+      <property name="title">
+       <string>Single</string>
+      </property>
+      <addaction name="menu_single_excel"/>
+      <addaction name="menu_single_img"/>
+     </widget>
+     <widget class="QMenu" name="menuAll">
+      <property name="title">
+       <string>All</string>
+      </property>
+      <addaction name="menu_all_excel"/>
+      <addaction name="menu_all_img"/>
+     </widget>
+     <addaction name="menuSingle"/>
+     <addaction name="menuAll"/>
     </widget>
     <addaction name="menuExport_as"/>
    </widget>
@@ -779,16 +793,6 @@ color:white;</string>
    <addaction name="menuEdit"/>
    <addaction name="menuTools"/>
   </widget>
-  <action name="menu_export_excel">
-   <property name="text">
-    <string>Excel (.xlsx)</string>
-   </property>
-  </action>
-  <action name="menu_export_images">
-   <property name="text">
-    <string>Images (.png)</string>
-   </property>
-  </action>
   <action name="menu_options">
    <property name="text">
     <string>Options</string>
@@ -807,6 +811,26 @@ color:white;</string>
   <action name="menu_reset_pan">
    <property name="text">
     <string>Reset Pan and Zoom</string>
+   </property>
+  </action>
+  <action name="menu_single_excel">
+   <property name="text">
+    <string>Excel (.xlsx)</string>
+   </property>
+  </action>
+  <action name="menu_single_img">
+   <property name="text">
+    <string>Image (.png)</string>
+   </property>
+  </action>
+  <action name="menu_all_excel">
+   <property name="text">
+    <string>Excel (.xlsx)</string>
+   </property>
+  </action>
+  <action name="menu_all_img">
+   <property name="text">
+    <string>Images (.png)</string>
    </property>
   </action>
  </widget>
