@@ -18,7 +18,6 @@ class Image:
 
         self.imgArr = self.preprocessImg(self.path)
         self.imgQt = self.convertCvImage2QtImage(self.imgArr)
-
         self.threshold = 120
         self.radiusRange = (40, 500) if type_ == "BF" else (10, 100)
 
@@ -27,11 +26,12 @@ class Image:
         self.ellipse = False # Keeps track of whether the shapes are ellipses or circles
 
     def preprocessImg(self, img_path):
-        image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        image = cv2.imread(img_path, -1) # Import raw image
         # Normalize image
         min_bit = np.min(image)
         max_bit = np.max(image)
-        image = cv2.normalize(image*16, dst=None, alpha=min_bit*16, beta=max_bit*16, norm_type=cv2.NORM_MINMAX)
+        norm_image = cv2.normalize(image, dst=None, alpha=min_bit, beta=max_bit, norm_type=cv2.NORM_MINMAX)
+        image = (norm_image/16).astype('uint8')
         return image
 
     # Convert an opencv image to QPixmap
