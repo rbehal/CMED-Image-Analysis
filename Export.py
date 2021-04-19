@@ -52,7 +52,10 @@ class ExportThread(QtCore.QThread):
           dayIds: List of day ids. Ex. ["p00", "p01", "p02"]        
         """
         # Name of file
-        path = self.path + self.bfImages.path.split("/")[-2] + " - Dimensions.xlsx"
+        if self.bfImages.path:
+            path = self.path + self.bfImages.path.split("/")[-2] + " - Dimensions.xlsx"
+        else:
+            path = self.path + "Dimensions.xlsx"
 
         # Create new workbook and sheet
         workbook = xlsxwriter.Workbook(path)
