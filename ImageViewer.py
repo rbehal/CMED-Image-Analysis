@@ -1,7 +1,12 @@
 from PyQt5.QtGui import QImage, QPixmap, QPainter
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QTimer
 from PyQt5 import QtCore, QtGui, QtWidgets
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from numpy import arange
 
 from Image import Image
 from ImageCollection import ImageCollection
@@ -30,7 +35,9 @@ class ImageViewer:
         self.pressed = False                  # Mouse pressed
 
         self.basePath = ""
-        self.dayFolders = [] 
+        self.dayFolders = []                  # If populated, folder structure is in Days
+        self.isZstack = False                 # If True, folder structure in in Z-Stack
+        self.sharpnessGraphs = []             # Sharpness graph windows for Z-Stacks
 
         self.currImage = None
         self.currImageIdx = -1 
@@ -62,24 +69,25 @@ class ImageViewer:
         self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
-    def getImages(self):
+    def getImages(self, pBar):
         ''' Get the names and paths of all the images in a directory. '''
 
-        VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.TIF', '.XBM')  # Image formats supported by Qt
+        VALID_FORMAT = ('.TIFF', '.TIF')  # Image formats supported
         id_pattern = "(p\d{1,4})" # Image id example: 'scan_Plate_R_{p03}_0_A02f00d4.TIF',
+        zStack_pattern = r"z(\d{1,4}).*d(\d)" # Zstack image example: 'EGFP_1mm_Plate_R_p00_{z79}_0_A02f00{d4}.TIF'
         
         self.bfImages.reset()
         self.trImages.reset()
 
         # If data is timelapse divided into BF and Texas Red Folders
-        if len(self.dayFolders) == 0:
+        if len(self.dayFolders) == 0 and not self.isZstack:
             # Initializing progress bar
             totalNumFiles = len(os.listdir(self.bfImages.path)) + len(os.listdir(self.trImages.path))
-            self.window.startPbar(totalNumFiles)
+            pBar.startPbar.emit(totalNumFiles)
 
             # Populate Bright Field image list
             for file in os.listdir(self.bfImages.path):
-                self.window.incrementPbar()
+                pBar.incrementPbar.emit()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.bfImages.path, file)
 
@@ -94,7 +102,7 @@ class ImageViewer:
             
             # Populate Texas Red image list                    
             for file in os.listdir(self.trImages.path):
-                self.window.incrementPbar()
+                pBar.incrementPbar.emit()
                 if file.upper().endswith(VALID_FORMAT):
                     im_path = os.path.join(self.trImages.path, file)
 
@@ -103,16 +111,38 @@ class ImageViewer:
                     
                     image_obj = Image(id_, file, "TR", im_path, self)
                     self.trImages.list.append(image_obj)
+        elif self.isZstack: # If Z-stack folder structure
+            # Initialize progress bar
+            pBar.startPbar.emit(len(os.listdir(self.basePath)))
+
+            for file in os.listdir(self.basePath):
+                pBar.incrementPbar.emit()
+                if file.upper().endswith(VALID_FORMAT):
+                    im_path = os.path.join(self.basePath, file)
+
+                    match = re.search(zStack_pattern, file)
+                    if not match or len(match.groups()) != 2:
+                        continue
+                    # Needs (match.groups(),) to unpack tuple properly
+                    for id_, type_ in (match.groups(),):
+                        if type_ == "4":
+                            image_obj = Image(id_, file, "BF", im_path, self)
+                            self.bfImages.list.append(image_obj)
+                        elif type_ == "2":
+                            image_obj = Image(id_, file, "TR", im_path, self)
+                            self.trImages.list.append(image_obj)
+                        else:
+                            continue        
         else: # Or else it must be daily folders  
             # Initializing progress bar
             totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
-            self.window.startPbar(totalNumFiles)
+            pBar.startPbar.emit(totalNumFiles)
 
             day_file_pattern = "_.{6}d(\d)"
 
             for day_num, day_path in self.dayFolders:
                 for file in os.listdir(day_path):
-                    self.window.incrementPbar()
+                    pBar.incrementPbar.emit()
 
                     im_path = os.path.join(day_path, file)
                     # All files with day structure have p00, so in id and name it's replaced with p[day_num]                    
@@ -133,7 +163,6 @@ class ImageViewer:
 
         self.bfImages.initMap()
         self.trImages.initMap()   
-        self.window.finishPbar()
         return      
 
     def selectDir(self):
@@ -144,6 +173,7 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'No Folder Selected', 'Please select a valid Folder')
             return
 
+        # Get array of subdirectories with formatting removed (dir_clean)
         subdirs = next(os.walk(self.basePath))[1]
         dirs = [os.path.join(self.basePath, dir_) for dir_ in subdirs]            
         dir_clean = list(map(str.strip, list(map(str.upper, subdirs))))
@@ -151,11 +181,14 @@ class ImageViewer:
         day_pattern = "DAY(\d{1,2})" # Regex for finding day folders
         for i in range(len(dir_clean)):
             dir_ = dir_clean[i]
+
+            # If folder is structured in terms of BF/Texas Red
             if "BF" == dir_:
                 self.bfImages.path = dirs[i]
             if "TEXAS RED" == dir_:
                 self.trImages.path = dirs[i]
 
+            # If folder is structured in terms of Day folders
             match = re.search(day_pattern, dir_)
             if match:
                 day_num = match.groups()[0]
@@ -163,19 +196,37 @@ class ImageViewer:
             else:
                 continue
 
-        if len(self.dayFolders) + len(self.trImages.path + self.bfImages.path) == 0:
+        if len(dir_clean) == 0:
+            # If folder is structured in terms of Z-Stack
+            for file in os.listdir(self.basePath):
+                zStack_pattern = r"z(\d{1,4}).*d(\d)"
+                match = re.search(zStack_pattern, file)
+                if match:
+                    self.isZstack = True
+                    break
+
+        if len(self.dayFolders) + len(self.trImages.path + self.bfImages.path) == 0 and not self.isZstack:
             QtWidgets.QMessageBox.warning(self.window, 'Improper Folder Structure', 'Folder structure selected is not supported. Please refer to available documentation.')
             return
-        elif self.bfImages.path == "" and len(self.dayFolders) == 0:            
+        elif self.bfImages.path == "" and len(self.dayFolders) == 0 and not self.isZstack:            
             QtWidgets.QMessageBox.warning(self.window, 'Missing Folder', 'Brightfield (BF) folder cannot be found. Please select directory with BF folder.')
             return
-        elif self.trImages.path == "" and len(self.dayFolders) == 0:
+        elif self.trImages.path == "" and len(self.dayFolders) == 0 and not self.isZstack:
             QtWidgets.QMessageBox.warning(self.window, 'Missing Folder', 'Texas Red folder cannot be found. Please select directory with Texas Red folder.')
             return
 
         self.window.tabWidget.setCurrentIndex(1)
-        self.getImages() # Initialize BF/TF
 
+        self.thread = InitializeImagesThread(self)
+
+        self.thread.startPbar.connect(self.window.startPbar)   
+        self.thread.incrementPbar.connect(self.window.incrementPbar)    
+        self.thread.finishPbar.connect(self.window.finishPbar)    
+        self.thread.finished.connect(self.finishedInitializing)  
+
+        self.thread.start()          
+
+    def finishedInitializing(self):
         # Display first image of TR and enable Pan 
         self.currImageIdx = 0
         self.currImage = self.currImageCol.list[self.currImageIdx]
@@ -187,6 +238,9 @@ class ImageViewer:
         # Enable the next image button on the gui if multiple images are loaded
         if self.numImages > 1:
             self.window.next_im.setEnabled(True)
+
+        if self.isZstack:
+            self.drawSharpnessGraphs()
 
     def resizeEvent(self, evt):
         if self.currImageIdx >= 0:
@@ -226,7 +280,7 @@ class ImageViewer:
         if self.currImage is None:
             return
 
-        if self.currImageCol.baseImage is not None:
+        if self.currImageCol.baseImage is not None and not self.isZstack:
             self.currImage.redraw()
         
         self.qimage = self.currImage.imgQt
@@ -348,11 +402,11 @@ class ImageViewer:
                 self.changeImageList(self.bfImages.list)
 
     def changeThreshold(self):
-        if self.currImage is not None:
+        if self.currImage is not None and not self.isZstack:
             self.currImage.threshold = self.window.threshold_slider.value()
 
     def changeRadiusRange(self):
-        if self.currImage is not None:
+        if self.currImage is not None and not self.isZstack:
             self.currImage.radiusRange = self.window.radius_slider.getRange()
 
     def changeImage(self):
@@ -364,11 +418,11 @@ class ImageViewer:
         self.window.radius_slider.setRange(self.currImage.radiusRange[0], self.currImage.radiusRange[1])
         self.window.enableDebounce()
 
-        if len(self.currImage.shapes) == 0:
+        if len(self.currImage.shapes) == 0 and not self.isZstack: # Don't draw if images are z-stack
             self.window.debounce.start()
 
     def setBaseImage(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage, self.bfImages.baseImage = self.trImages.map[self.currImage.id], self.bfImages.map[self.currImage.id]
         self.trImages.baseId, self.bfImages.baseId = self.currImage.id, self.currImage.id
@@ -377,7 +431,7 @@ class ImageViewer:
         self.loadImage()
 
     def clearBaseImage(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage = None
         self.bfImages.baseImage = None
@@ -386,7 +440,7 @@ class ImageViewer:
         self.loadImage()
 
     def drawCircle(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
         rng = self.window.radius_slider.getRange()
@@ -401,7 +455,7 @@ class ImageViewer:
         self.thread.start()               
 
     def drawEllipse(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
         rng = self.window.radius_slider.getRange()
@@ -416,7 +470,7 @@ class ImageViewer:
         self.thread.start()
 
     def recalculate(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
         if self.window.checkBox.isChecked():
             self.drawCircle()
@@ -424,7 +478,7 @@ class ImageViewer:
             self.drawEllipse()
 
     def exportAllExcel(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
 
         path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
@@ -437,7 +491,7 @@ class ImageViewer:
         self.thread.start()     
 
     def exportSingleExcel(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
 
         self.setBaseImage()
@@ -451,7 +505,7 @@ class ImageViewer:
         self.thread.start()      
 
     def exportAllImages(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
 
         path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
@@ -467,7 +521,7 @@ class ImageViewer:
         self.thread.start()   
         
     def exportSingleImage(self):
-        if self.currImage is None:
+        if self.currImage is None and not self.isZstack:
             return
 
         path = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
@@ -481,7 +535,49 @@ class ImageViewer:
         self.thread.incrementPbar.connect(self.window.incrementPbar)    
         self.thread.finishPbar.connect(self.window.finishPbar)    
 
-        self.thread.start()           
+        self.thread.start()  
+
+    def drawSharpnessGraphs(self):
+        self.thread1, self.thread2 = GetSharpnessThread(self.bfImages.list, "Spheroid Sharpness"), GetSharpnessThread(self.trImages.list, "Sensor Sharpness")
+        
+        for thread in (self.thread1, self.thread2):
+            thread.startPbar.connect(self.window.startPbar)   
+            thread.incrementPbar.connect(self.window.incrementPbar)    
+            thread.finishPbar.connect(self.window.finishPbar)    
+            thread.finished.connect(self.showSharpnessGraphs)
+            thread.start()   
+
+    def showSharpnessGraphs(self, imageSharpness, title):
+        x, y  = [], []
+        for id_, sharpness in imageSharpness:
+            x.append(float(id_))
+            y.append(1 / sharpness)
+
+        if len(x) == 0 or len(y) == 0:
+            return
+            
+        plot = PlotWindow(self, width=5, height=4, dpi=100)
+        plot.axes.plot(x, y)
+        plot.axes.set_xticks(arange(min(x), max(x)+1, 5.0))
+        plot.axes.set_title(title)
+        plot.setWindowTitle(title)
+        plot.show()       
+        self.sharpnessGraphs.append(plot) 
+
+class InitializeImagesThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal()
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()   
+
+    def __init__(self, viewer, parent=None):
+        super(InitializeImagesThread, self).__init__(parent)
+        self.viewer = viewer
+
+    def run(self):
+        self.viewer.getImages(self)
+        self.finishPbar.emit()
+        self.finished.emit()
         
 class DrawCircleThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
@@ -516,3 +612,30 @@ class DrawEllipseThread(QtCore.QThread):
         self.img.drawEllipse(self.thresh, self.range, self)
         self.finishPbar.emit()
         self.finished.emit()
+
+class GetSharpnessThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal(object, str)
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()    
+
+    def __init__(self, image_list, title, parent=None):
+        super(GetSharpnessThread, self).__init__(parent)
+        self.list = image_list
+        self.title = title
+
+    def run(self):
+        imageSharpness = []
+        self.startPbar.emit(len(self.list))
+        for num, image in enumerate(self.list):
+            self.incrementPbar.emit()
+            sharpness = image.getSharpness()
+            imageSharpness.append((image.id, sharpness))
+        self.finishPbar.emit()
+        self.finished.emit(imageSharpness, self.title)        
+
+class PlotWindow(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(PlotWindow, self).__init__(fig)

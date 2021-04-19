@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+build_env/
 develop-eggs/
 dist/
 downloads/
@@ -127,3 +128,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.vscode/settings.json
+build_env/pyvenv.cfg
