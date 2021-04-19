@@ -4,6 +4,7 @@ from numpy import pi
 import cv2
 
 class ExportThread(QtCore.QThread):
+    """Thread used for exporting operations. (All/Single Excel/Images)"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -33,6 +34,7 @@ class ExportThread(QtCore.QThread):
         self.finished.emit()
 
     def initializeExcelFormats(self):
+        """Defining formatting objects to be used with xlsxwriter for cell formatting"""
         self.h1_data = {'bold': 1,'underline': 1,'align': 'center','valign': 'vcenter','fg_color': '#FFD966'}
         self.h2_data = {'bold': 1,'underline': 1,'align': 'center','valign': 'vcenter','fg_color': '#F4B084'}
         self.h3_data = {'bold': 1, 'align': 'center', 'valign': 'vcenter', 'fg_color': '#C6E0B4'}
@@ -41,6 +43,14 @@ class ExportThread(QtCore.QThread):
         self.data_format_params = {'align': 'right','fg_color': '#C6E0B4'}
 
     def exportExcel(self, data, spheroidIds, sensorIds, dayIds):
+        """
+        Exports an Excel sheet for both raw data and calculated data or just raw data for single image.
+        Args:
+          data: Dictionary containing all shape data sorted by days and spheroid/sensor. Format given in getBaseData().
+          spheroidIds: List of spheroid ids. Ex. ["1", "2", "3"]
+          sensorIds: List of sensor ids. Ex. ["1a", "1b", "2a"]
+          dayIds: List of day ids. Ex. ["p00", "p01", "p02"]        
+        """
         # Name of file
         path = self.path + self.bfImages.path.split("/")[-2] + " - Dimensions.xlsx"
 
@@ -68,8 +78,14 @@ class ExportThread(QtCore.QThread):
             sensorCount[spheroidId] = sensorList      
 
         headerRow = ["ID#","AREA","X","Y","MAJOR","MINOR","ADJ. ANGLE","ID#","AREA","X","Y","MAJOR","MINOR","ADJ. ANGLE"]
-
         def writeRawDayData(startRow, startCol, dayId):
+            """
+            Writes the raw shape data to an Excel sheet at the given region for the given day.
+            Args:
+              startRow: Number of the row to start at (starting at row 0)
+              startCol: Number of the column to start at (starting at col 0)
+              dayId: Day ID to write the data of
+            """
             rowNum, colNum = startRow, startCol
             
             # Convert spheroid and sensor data into arrays of strings for Excel write
@@ -178,6 +194,13 @@ class ExportThread(QtCore.QThread):
         calcDataSheet = workbook.add_worksheet("Calculated Data")
         headerRow = ["ID#","SPHEROID AREA STRAIN","RADIAL STRAIN","CIRCUMFERENTIAL STRAIN"]
         def writeCalcDayData(startRow, startCol, dayId):
+            """
+            Writes the strain data on a separate spreadsheet for the given region and day.
+            Args:
+              startRow: Number of the row to start at (starting at row 0)
+              startCol: Number of the column to start at (starting at col 0)
+              dayId: Day ID to write the data of
+            """
             rowNum, colNum = startRow, startCol
             
             # Get strain data for row
@@ -267,6 +290,7 @@ class ExportThread(QtCore.QThread):
         workbook.close() 
 
     def exportAllExcel(self):
+        """Exports excel with shape data and strain data for all images"""
         for img in self.bfImages.list + self.trImages.list:
             img.redraw()
 
@@ -276,6 +300,7 @@ class ExportThread(QtCore.QThread):
         self.exportExcel(data, spheroidIds, sensorIds, dayIds)
 
     def exportSingleExcel(self):
+        """Exports excel with shape data for a single image"""
         self.trImages.baseImage.redraw()
         self.bfImages.baseImage.redraw()
 
@@ -285,7 +310,18 @@ class ExportThread(QtCore.QThread):
         self.exportExcel(data, spheroidIds, sensorIds, dayIds)
 
     def getShapeData(self, isEllipse, shape):
-        # [area,x,y,major,minor,adjusted angle]
+        """
+        Gets a list of shape data to be written in an Excel row.
+
+        Args:
+          isEllipse: Boolean describing type of shape, Ellipse or Circle.
+          shape: Shape data. (Ellipse: ((x,y),(w,h),ang,id) ; Circle: ((x, y),r,id))
+
+        Returns:
+          List of shape data to be written to Excel:
+            - Major and minor of a circle are just the radius. Adjusted Angle is 0. 
+            Ex. [area,x,y,major,minor,adjusted angle]
+        """
         if isEllipse:
             (x,y), (w,h), ang, _ = shape
             x, y, w, h = x/self.scale, y/self.scale, w/self.scale, h/self.scale
@@ -309,6 +345,15 @@ class ExportThread(QtCore.QThread):
         return data
 
     def getAllData(self):
+        """ 
+        Returns data of all shapes.
+
+        Returns:
+          data: Dictionary containing all shape data sorted by days and spheroid/sensor. Format given in getBaseData().
+          spheroidIds: List of spheroid ids. Ex. ["1", "2", "3"]
+          sensorIds: List of sensor ids. Ex. ["1a", "1b", "2a"]
+          dayIds: List of day ids. Ex. ["p00", "p01", "p02"]        
+        """
         data, spheroidIds, sensorIds, dayIds = self.getBaseData()
     
         for id_ in dayIds:
@@ -330,6 +375,15 @@ class ExportThread(QtCore.QThread):
         return data, spheroidIds, sensorIds, dayIds
 
     def getBaseData(self):
+        """ 
+        Returns data of just the base shape.
+
+        Returns:
+          data: Dictionary containing base shape data sorted by days and spheroid/sensor. Format given below.
+          spheroidIds: List of spheroid ids. Ex. ["1", "2", "3"]
+          sensorIds: List of sensor ids. Ex. ["1a", "1b", "2a"]
+          dayIds: List of day ids. Ex. ["p00", "p01", "p02"]
+        """
         bfBaseImg = self.bfImages.baseImage
         trBaseImg = self.trImages.baseImage
         if bfBaseImg is None:
@@ -360,6 +414,7 @@ class ExportThread(QtCore.QThread):
         return data, sorted(spheroidIds), sorted(sensorIds), dayIds
 
     def exportAllImages(self):
+        """Exports all images as PNGs"""
         allImages = self.bfImages.list + self.trImages.list 
         for img in allImages:
             img.redraw()     
@@ -368,6 +423,7 @@ class ExportThread(QtCore.QThread):
             cv2.imwrite(self.path + filename + ".png", img.imgArr)
             
     def exportSingleImage(self):
+        """Exports a single pair of images as PNGs"""
         # Here self.bfImages and self.trImages are currImg and complement Image objects
         for img in (self.bfImages, self.trImages):
             filename = img.name.split(".")[0]

@@ -15,9 +15,7 @@ from Export import ExportThread
 import os, re
 
 class ImageViewer:
-    ''' Basic image viewer class to show an image with zoom and pan functionaities.
-        Requirement: Qt's Qlabel widget name where the image will be drawn/displayed.
-    '''
+    """Image viewer class to display an image with zoom and pan functionaities."""
     def __init__(self, imageLabels, window):
         self.bfImages = ImageCollection("BF", imageLabels[0])
         self.trImages = ImageCollection("TR", imageLabels[1])
@@ -47,6 +45,10 @@ class ImageViewer:
         self.initializeQLabels()
 
     def initializeQLabels(self):
+        """
+        Each image on each tab is represented by a qlabel object. This function
+        initializes all mouse events and policies for each of the qlabels.
+        """
         # Mouse events
         self.trImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.trImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor)
@@ -63,14 +65,18 @@ class ImageViewer:
         self.bfImages.qlabel.setMouseTracking(True)
 
     def onResize(self):
-        ''' Things to do when image is resized '''
+        """Things to do when image is resized"""
         self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         self.qpixmap.fill(QtCore.Qt.gray)
         self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
     def getImages(self, pBar):
-        ''' Get the names and paths of all the images in a directory. '''
+        """
+        Initialize and populate bfImages and trImages ImageCollection.
+        Args:
+          pBar: Thread object used to emit signals to the progress bar
+        """
 
         VALID_FORMAT = ('.TIFF', '.TIF')  # Image formats supported
         id_pattern = "(p\d{1,4})" # Image id example: 'scan_Plate_R_{p03}_0_A02f00d4.TIF',
@@ -166,7 +172,10 @@ class ImageViewer:
         return      
 
     def selectDir(self):
-        ''' Select a directory, make list of images in it and display the first image in the list. '''
+        """
+        Select a directory, then make and initialize ImageCollections based on folder structure.
+        --> 3 possible folder structures: timelapse, day folders, and z-stack
+        """
         # open 'select folder' dialog box
         self.basePath = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
         if not self.basePath:
@@ -227,6 +236,7 @@ class ImageViewer:
         self.thread.start()          
 
     def finishedInitializing(self):
+        """Set current image and list after loading and display"""
         # Display first image of TR and enable Pan 
         self.currImageIdx = 0
         self.currImage = self.currImageCol.list[self.currImageIdx]
@@ -243,10 +253,14 @@ class ImageViewer:
             self.drawSharpnessGraphs()
 
     def resizeEvent(self, evt):
+        """
+        Function called when image needs to resize. 
+        """
         if self.currImageIdx >= 0:
             self.onResize()
 
     def nextImg(self):
+        """Loads the next image in the list."""
         if self.currImage is None:
             return
         if self.currImageIdx < self.numImages -1:
@@ -257,6 +271,7 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
 
     def prevImg(self):
+        """Loads the previous image in the list."""
         if self.currImage is None:
             return
         if self.currImageIdx > 0:
@@ -267,16 +282,18 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
+        """Called when user clicks an image name in the list on the side. Navigates and displays that image."""
         if self.currImageCol is not None:
             self.currImageIdx = self.qImageNameItems.index(item)
             self.changeImage()
 
     def action_move(self):
+        """Called when user attempts to click and drag mouse across image (pan)"""
         if self.window.toggle_move.isChecked():
             self.enablePan(True)        
 
     def loadImage(self):
-        ''' To load and display new image.'''
+        """Load and displays current image."""
         if self.currImage is None:
             return
 
@@ -292,10 +309,10 @@ class ImageViewer:
             self.window.statusbar.showMessage('Cannot open this image! Try another one.', 5000)
 
     def scaleUpdate(self):
-        ''' This function actually draws the scaled image to currImageCol.qlabel.
-            It will be repeatedly called when zooming or panning.
-            So, I tried to include only the necessary operations required just for these tasks. 
-        '''
+        """
+        This function actually draws the scaled image to currImageCol.qlabel.
+        It will be repeatedly called when zooming or panning.
+        """
         if not self.qimage_scaled.isNull():
             # check if position is within limits to prevent unbounded panning.
             px, py = self.position
@@ -319,11 +336,13 @@ class ImageViewer:
             pass
 
     def mousePressAction(self, QMouseEvent):
+        """Called when mouse is pressed"""
         if self.panFlag:
             self.pressed = QMouseEvent.pos()                            # Starting point of drag vector
             self.anchor = self.position                                 # Save the pan position when panning starts
 
     def mouseMoveAction(self, QMouseEvent):
+        """Called when mouse is moved"""
         self.mousex, self.mousey = QMouseEvent.pos().x(), QMouseEvent.pos().y()
         if self.pressed:
             dx, dy = self.mousex - self.pressed.x(), self.mousey - self.pressed.y()         # Calculate the drag vector
@@ -331,9 +350,15 @@ class ImageViewer:
             self.scaleUpdate()                                               # Show the image with udated pan position
 
     def mouseReleaseAction(self, QMouseEvent):
+        """Called when mouse is released"""
         self.pressed = None                                             # Clear the starting point of drag vector        
 
     def zoomPlus(self, scroll=False):
+        """
+        Function called when the zoom + button is clicked or CTRL+Scroll is used/trackpad zoom.
+        Args:
+          scroll: True if function is not called through the button, but CTRL+scroll or trackpad
+        """
         px, py = self.position
 
         if scroll:
@@ -353,6 +378,11 @@ class ImageViewer:
         self.scaleUpdate()
 
     def zoomMinus(self, scroll=False):
+        """
+        Function called when the zoom - button is clicked or CTRL+Scroll is used/trackpad zoom.
+        Args:
+          scroll: True if function is not called through the button, but CTRL+scroll or trackpad
+        """
         if self.zoomX > 1:
             px, py = self.position
 
@@ -371,6 +401,7 @@ class ImageViewer:
             self.scaleUpdate()
 
     def resetZoom(self):
+        """Called when zoom reset button is clicked"""
         if self.currImage is None:
             return
         self.zoomX = 1
@@ -379,9 +410,15 @@ class ImageViewer:
         self.scaleUpdate()
 
     def enablePan(self, value):
+        """Called when enable pan button is clicked"""
         self.panFlag = value
 
     def changeImageList(self, list_):
+        """
+        Changes image list between TR images and BF images. 
+        Args:
+          list_: List of image objects
+        """
         self.changeImage()
         # Make a list of qitems for the image names
         self.qImageNameItems = [QtWidgets.QListWidgetItem(img.name) for img in list_]
@@ -391,6 +428,11 @@ class ImageViewer:
         self.qImageNameItems[self.currImageIdx].setSelected(True)            
 
     def changeTab(self, idx):
+        """
+        Called when one of the tabs in the GUI is clicked
+        Args:
+          idx: Index of tab that is clicked. 1 = Red Channel (TR), 2 = Bright Field (BF)
+        """
         if self.numImages > 0:
             if idx == 1:
                 self.window.checkBox.setCheckState(0) # Draw Ellipses for red channel
@@ -402,14 +444,17 @@ class ImageViewer:
                 self.changeImageList(self.bfImages.list)
 
     def changeThreshold(self):
+        """Called when either the threshold slider or number box is altered"""
         if self.currImage is not None and not self.isZstack:
             self.currImage.threshold = self.window.threshold_slider.value()
 
     def changeRadiusRange(self):
+        """Called when either the radius range slider or number box is altered"""
         if self.currImage is not None and not self.isZstack:
             self.currImage.radiusRange = self.window.radius_slider.getRange()
 
     def changeImage(self):
+        """Called when changing image on screen. Handles loading image on GUI and calculating shapes."""
         self.currImage = self.currImageCol.list[self.currImageIdx]
         self.loadImage()
 
@@ -422,6 +467,7 @@ class ImageViewer:
             self.window.debounce.start()
 
     def setBaseImage(self):
+        """Marks current pair of images (both TR and BF) as their respective base images."""
         if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage, self.bfImages.baseImage = self.trImages.map[self.currImage.id], self.bfImages.map[self.currImage.id]
@@ -431,6 +477,7 @@ class ImageViewer:
         self.loadImage()
 
     def clearBaseImage(self):
+        """Clears current base images in both the TR and BF image collections."""
         if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage = None
@@ -440,6 +487,7 @@ class ImageViewer:
         self.loadImage()
 
     def drawCircle(self):
+        """Detects and draws circles for current image"""
         if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
@@ -455,6 +503,7 @@ class ImageViewer:
         self.thread.start()               
 
     def drawEllipse(self):
+        """Detects and draws ellipses for current image"""
         if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
@@ -470,6 +519,7 @@ class ImageViewer:
         self.thread.start()
 
     def recalculate(self):
+        """Recalculates and redraws whichever shapes are being detected"""
         if self.currImage is None and not self.isZstack:
             return
         if self.window.checkBox.isChecked():
@@ -478,6 +528,7 @@ class ImageViewer:
             self.drawEllipse()
 
     def exportAllExcel(self):
+        """Exports all currently drawn images as Excel data. Base image must be set before calling."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -491,6 +542,7 @@ class ImageViewer:
         self.thread.start()     
 
     def exportSingleExcel(self):
+        """Exports shape dimensions of current images. Shapes should be drawn on both images in the current pair."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -505,6 +557,7 @@ class ImageViewer:
         self.thread.start()      
 
     def exportAllImages(self):
+        """Exports all currently drawn images as Images (png)."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -521,6 +574,7 @@ class ImageViewer:
         self.thread.start()   
         
     def exportSingleImage(self):
+        """Exports current image pair as Images (png)."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -538,6 +592,7 @@ class ImageViewer:
         self.thread.start()  
 
     def drawSharpnessGraphs(self):
+        """Plots using popup MatPlotLib windows graphs of the sharpness of the images. This is used for Z-Stack images."""
         self.thread1, self.thread2 = GetSharpnessThread(self.bfImages.list, "Spheroid Sharpness"), GetSharpnessThread(self.trImages.list, "Sensor Sharpness")
         
         for thread in (self.thread1, self.thread2):
@@ -548,6 +603,12 @@ class ImageViewer:
             thread.start()   
 
     def showSharpnessGraphs(self, imageSharpness, title):
+        """
+        Shows MatPlotLib graphs in popup windows.
+        Args:
+          imageSharpness: Array of tuples containing the id_ of the image and its sharpness value
+          title: Title of the plot. Either Sensor Sharpness or Spheroid Sharpness.
+        """
         x, y  = [], []
         for id_, sharpness in imageSharpness:
             x.append(float(id_))
@@ -565,6 +626,7 @@ class ImageViewer:
         self.sharpnessGraphs.append(plot) 
 
 class InitializeImagesThread(QtCore.QThread):
+    """Thread object for loading images in"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -580,6 +642,7 @@ class InitializeImagesThread(QtCore.QThread):
         self.finished.emit()
         
 class DrawCircleThread(QtCore.QThread):
+    """Thread object for calculating and drawing circles on image"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -597,6 +660,7 @@ class DrawCircleThread(QtCore.QThread):
         self.finished.emit()
 
 class DrawEllipseThread(QtCore.QThread):
+    """Thread object for calculating and drawing ellipses on image"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -614,6 +678,7 @@ class DrawEllipseThread(QtCore.QThread):
         self.finished.emit()
 
 class GetSharpnessThread(QtCore.QThread):
+    """Thread object for calculating and plotting sharpness graphs for Z-Stack images"""
     finished = QtCore.pyqtSignal(object, str)
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -635,6 +700,7 @@ class GetSharpnessThread(QtCore.QThread):
         self.finished.emit(imageSharpness, self.title)        
 
 class PlotWindow(FigureCanvasQTAgg):
+    """Object for separate plot windows for sharpness graphs"""
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)

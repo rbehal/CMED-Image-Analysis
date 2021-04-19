@@ -1,4 +1,8 @@
 class ImageCollection:
+    """
+    Image Collection object used to refer to a set of images.
+    --> Currently just either Texas Red (sensor) images or Bright Field (spheroid) images
+    """
     def __init__(self, type_, qlabel):
         self.type = type_
 
@@ -12,10 +16,12 @@ class ImageCollection:
         self.map = {}
 
     def initMap(self):
+        """Populate dictionary with images --> dict - {id : Image}"""
         for image in self.list:
             self.map[image.id] = image
 
     def reset(self):
+        """Reset full image collection. Used when selected new set of images."""
         self.list = []
         self.map = {}
         self.baseImage = None
