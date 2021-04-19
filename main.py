@@ -1,11 +1,13 @@
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtWidgets import QApplication
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+import os
+import re
+import sys
 
-from qrangeslider import QRangeSlider
+from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import QApplication
 
 from ImageViewer import ImageViewer
-import sys, os, re
+from qrangeslider import QRangeSlider
 
 gui = uic.loadUiType("main.ui")[0]     # load UI file designed in Qt Designer
 
@@ -41,7 +43,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.radius_slider.startValueChanged.connect(self.minRadius_box.setValue)
         self.radius_slider.endValueChanged.connect(self.maxRadius_box.setValue)
         self.minRadius_box.valueChanged.connect(self.radius_slider.setStart)
-        self.minRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)        
+        self.minRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
@@ -63,47 +65,47 @@ class Iwindow(QtWidgets.QMainWindow, gui):
     def startPbar(self, max_):
         self.progressBar.setValue(0)
         self.progressBar.setMaximum(max_)
-        QApplication.processEvents() 
+        QApplication.processEvents()
 
     def incrementPbar(self):
-        self.progressBar.setValue(self.progressBar.value() + 1) 
-        QApplication.processEvents() 
+        self.progressBar.setValue(self.progressBar.value() + 1)
+        QApplication.processEvents()
 
     def finishPbar(self):
         self.progressBar.setValue(self.progressBar.maximum())
         self.progressBar.setValue(0)
-        QApplication.processEvents() 
+        QApplication.processEvents()
 
     def initDrawDebounce(self, msDelay=1000):
         self.debounce = QTimer()
         self.debounce.setInterval(msDelay)
         self.debounce.setSingleShot(True)
 
-        self.enableDebounce()      
+        self.enableDebounce()
 
         self.checkBox.setCheckState(2) # Initially set to draw circles
 
     def disableDebounce(self):
-        self.threshold_box.valueChanged.disconnect(self.debounce.start) 
+        self.threshold_box.valueChanged.disconnect(self.debounce.start)
         self.minRadius_box.valueChanged.disconnect(self.debounce.start)
-        self.maxRadius_box.valueChanged.disconnect(self.debounce.start)  
-    
+        self.maxRadius_box.valueChanged.disconnect(self.debounce.start)
+
     def enableDebounce(self):
-        self.threshold_box.valueChanged.connect(self.debounce.start) 
+        self.threshold_box.valueChanged.connect(self.debounce.start)
         self.minRadius_box.valueChanged.connect(self.debounce.start)
-        self.maxRadius_box.valueChanged.connect(self.debounce.start)          
+        self.maxRadius_box.valueChanged.connect(self.debounce.start)
 
     def checkBoxTick(self, isChecked):
         # Error if disconnect is used before connect
         try:
             if isChecked:
                 # Connect draw circle
-                self.debounce.timeout.connect(self.imageViewer.drawCircle)              
+                self.debounce.timeout.connect(self.imageViewer.drawCircle)
                 self.debounce.timeout.disconnect(self.imageViewer.drawEllipse)
             else:
                 # Connect draw  ellipse
-                self.debounce.timeout.connect(self.imageViewer.drawEllipse)              
-                self.debounce.timeout.disconnect(self.imageViewer.drawCircle)   
+                self.debounce.timeout.connect(self.imageViewer.drawEllipse)
+                self.debounce.timeout.disconnect(self.imageViewer.drawCircle)
         except:
             pass
 
@@ -111,23 +113,23 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         if sys.platform == "win32":
             import ctypes
             appid = 'cmed Image Analysis.1.00' # arbitrary string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)  
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
 
     def wheelEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if modifiers == QtCore.Qt.ControlModifier:
             # Dividing by 120 gets number of notches on a typical scroll wheel. See QWheelEvent documentation
             delta_notches = event.angleDelta().y() / 120
-            factor = delta_notches        
+            factor = delta_notches
             if factor > 0:
                 if self.imageViewer.currImage is not None:
                     self.imageViewer.zoomPlus(True)
             elif factor < 0:
                 if self.imageViewer.currImage is not None:
-                    self.imageViewer.zoomMinus(True)    
+                    self.imageViewer.zoomMinus(True)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Left: 
+        if event.key() == Qt.Key_Left:
             self.imageViewer.prevImg()
         elif event.key() == Qt.Key_Right:
             self.imageViewer.nextImg()
