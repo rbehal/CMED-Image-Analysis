@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
@@ -124,7 +124,13 @@ class Iwindow(QtWidgets.QMainWindow, gui):
                     self.imageViewer.zoomPlus(True)
             elif factor < 0:
                 if self.imageViewer.currImage is not None:
-                    self.imageViewer.zoomMinus(True)                            
+                    self.imageViewer.zoomMinus(True)    
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Left: 
+            self.imageViewer.prevImg()
+        elif event.key() == Qt.Key_Right:
+            self.imageViewer.nextImg()
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

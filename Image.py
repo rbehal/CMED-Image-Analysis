@@ -268,4 +268,9 @@ class Image:
             int(num)
             return True
         except ValueError:
-            return False        
+            return False    
+
+    def getSharpness(self):
+        # Compute the Laplacian of the image and then return the shar[ness]
+        # measure, which is simply the variance of the Laplacian
+        return cv2.Laplacian(self.imgArr, cv2.CV_64F).var()            

@@ -1,7 +1,12 @@
 from PyQt5.QtGui import QImage, QPixmap, QPainter
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QTimer
 from PyQt5 import QtCore, QtGui, QtWidgets
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from numpy import arange
 
 from Image import Image
 from ImageCollection import ImageCollection
@@ -32,6 +37,7 @@ class ImageViewer:
         self.basePath = ""
         self.dayFolders = []                  # If populated, folder structure is in Days
         self.isZstack = False                 # If True, folder structure in in Z-Stack
+        self.sharpnessGraphs = []             # Sharpness graph windows for Z-Stacks
 
         self.currImage = None
         self.currImageIdx = -1 
@@ -115,7 +121,7 @@ class ImageViewer:
                     im_path = os.path.join(self.basePath, file)
 
                     match = re.search(zStack_pattern, file)
-                    if len(match.groups()) != 2:
+                    if not match or len(match.groups()) != 2:
                         continue
                     # Needs (match.groups(),) to unpack tuple properly
                     for id_, type_ in (match.groups(),):
@@ -127,7 +133,6 @@ class ImageViewer:
                             self.trImages.list.append(image_obj)
                         else:
                             continue        
-        
         else: # Or else it must be daily folders  
             # Initializing progress bar
             totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
@@ -233,6 +238,9 @@ class ImageViewer:
         # Enable the next image button on the gui if multiple images are loaded
         if self.numImages > 1:
             self.window.next_im.setEnabled(True)
+
+        if self.isZstack:
+            self.drawSharpnessGraphs()
 
     def resizeEvent(self, evt):
         if self.currImageIdx >= 0:
@@ -527,7 +535,34 @@ class ImageViewer:
         self.thread.incrementPbar.connect(self.window.incrementPbar)    
         self.thread.finishPbar.connect(self.window.finishPbar)    
 
-        self.thread.start()   
+        self.thread.start()  
+
+    def drawSharpnessGraphs(self):
+        self.thread1, self.thread2 = GetSharpnessThread(self.bfImages.list, "Spheroid Sharpness"), GetSharpnessThread(self.trImages.list, "Sensor Sharpness")
+        
+        for thread in (self.thread1, self.thread2):
+            thread.startPbar.connect(self.window.startPbar)   
+            thread.incrementPbar.connect(self.window.incrementPbar)    
+            thread.finishPbar.connect(self.window.finishPbar)    
+            thread.finished.connect(self.showSharpnessGraphs)
+            thread.start()   
+
+    def showSharpnessGraphs(self, imageSharpness, title):
+        x, y  = [], []
+        for id_, sharpness in imageSharpness:
+            x.append(float(id_))
+            y.append(1 / sharpness)
+
+        if len(x) == 0 or len(y) == 0:
+            return
+            
+        plot = PlotWindow(self, width=5, height=4, dpi=100)
+        plot.axes.plot(x, y)
+        plot.axes.set_xticks(arange(min(x), max(x)+1, 5.0))
+        plot.axes.set_title(title)
+        plot.setWindowTitle(title)
+        plot.show()       
+        self.sharpnessGraphs.append(plot) 
 
 class InitializeImagesThread(QtCore.QThread):
     finished = QtCore.pyqtSignal()
@@ -577,3 +612,30 @@ class DrawEllipseThread(QtCore.QThread):
         self.img.drawEllipse(self.thresh, self.range, self)
         self.finishPbar.emit()
         self.finished.emit()
+
+class GetSharpnessThread(QtCore.QThread):
+    finished = QtCore.pyqtSignal(object, str)
+    startPbar = QtCore.pyqtSignal(int)
+    incrementPbar = QtCore.pyqtSignal()
+    finishPbar = QtCore.pyqtSignal()    
+
+    def __init__(self, image_list, title, parent=None):
+        super(GetSharpnessThread, self).__init__(parent)
+        self.list = image_list
+        self.title = title
+
+    def run(self):
+        imageSharpness = []
+        self.startPbar.emit(len(self.list))
+        for num, image in enumerate(self.list):
+            self.incrementPbar.emit()
+            sharpness = image.getSharpness()
+            imageSharpness.append((image.id, sharpness))
+        self.finishPbar.emit()
+        self.finished.emit(imageSharpness, self.title)        
+
+class PlotWindow(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(PlotWindow, self).__init__(fig)
