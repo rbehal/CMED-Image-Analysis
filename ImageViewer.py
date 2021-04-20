@@ -15,39 +15,40 @@ from Export import ExportThread
 import os, re
 
 class ImageViewer:
-    ''' Basic image viewer class to show an image with zoom and pan functionaities.
-        Requirement: Qt's Qlabel widget name where the image will be drawn/displayed.
-    '''
+    """Image viewer class to display an image with zoom and pan functionaities."""
     def __init__(self, imageLabels, window):
-        self.bfImages = ImageCollection("BF", imageLabels[0])
-        self.trImages = ImageCollection("TR", imageLabels[1])
+        self.bfImages = ImageCollection("BF", imageLabels[0]) # Initialize image collection for each tab respectively
+        self.trImages = ImageCollection("TR", imageLabels[1]) 
 
-        self.currImageCol = self.trImages    # Current image collection
+        self.currImageCol = self.trImages   # Current image collection
 
         self.window = window
-        self.qimage_scaled = QImage()         # Scaled image to fit to the size of currImageCol.qlabel
-        self.qpixmap = QPixmap()              # QPixmap to fill the currImageCol.qlabel
+        self.qimage_scaled = QImage()       # Scaled image to fit to the size of currImageCol.qlabel
+        self.qpixmap = QPixmap()            # QPixmap to fill the currImageCol.qlabel
 
-        self.zoomX = 1                        # Zoom factor w.r.t size of currImageCol.qlabel
-        self.position = [0, 0]                # Position of top left corner of currImageCol.qlabel w.r.t. qimage_scaled
+        self.zoomX = 1                      # Zoom factor w.r.t size of currImageCol.qlabel
+        self.position = [0, 0]              # Position of top left corner of currImageCol.qlabel w.r.t. qimage_scaled
         self.mousex, self.mousey = 0, 0
-        self.panFlag = False                  # To enable or disable pan
-        self.pressed = False                  # Mouse pressed
+        self.panFlag = False                # To enable or disable pan
+        self.pressed = False                # Mouse pressed
 
         self.basePath = ""
-        self.dayFolders = []                  # If populated, folder structure is in Days
-        self.isZstack = False                 # If True, folder structure in in Z-Stack
-        self.sharpnessGraphs = []             # Sharpness graph windows for Z-Stacks
+        self.dayFolders = []                # If populated, folder structure is in Days
+        self.isZstack = False               # If True, folder structure in in Z-Stack
+        self.sharpnessGraphs = []           # Sharpness graph windows for Z-Stacks
 
-        self.currImage = None
-        self.currImageIdx = -1
-        self.numImages = -1
-        self.qImageNameItems = []
+        self.currImage = None               # Current Image object being displayed in the viewer
+        self.currImageIdx = -1              # Index of current image object being displayed (in qlist and col.list)
+        self.numImages = -1                 # Number of images in the current list of images being displayed
+        self.qImageNameItems = []           # List of qitems for image names that populate the list in the GUI
 
         self.initializeQLabels()
 
     def initializeQLabels(self):
-        # Mouse events
+        """
+        Each image on each tab is represented by a qlabel object. This function
+        initializes all mouse events and policies for each of the qlabels.
+        """
         self.trImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.trImages.qlabel.setCursor(QtCore.Qt.OpenHandCursor)
         self.bfImages.qlabel.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
@@ -63,15 +64,19 @@ class ImageViewer:
         self.bfImages.qlabel.setMouseTracking(True)
 
     def onResize(self):
-        ''' Things to do when image is resized '''
+        """Things to do when image is resized"""
+        # Pixmap is the basis of the viwer. It is the medium for displaying, panning, and zooming around the QImage
         self.qpixmap = QPixmap(self.currImageCol.qlabel.size())
         self.qpixmap.fill(QtCore.Qt.gray)
         self.qimage_scaled = self.qimage.scaled(self.currImageCol.qlabel.width() * self.zoomX, self.currImageCol.qlabel.height() * self.zoomX, QtCore.Qt.KeepAspectRatioByExpanding)
         self.scaleUpdate()
 
     def getImages(self, pBar):
-        ''' Get the names and paths of all the images in a directory. '''
-
+        """
+        Initialize and populate bfImages and trImages ImageCollection.
+        Args:
+          pBar: Thread object used to emit signals to the progress bar
+        """
         VALID_FORMAT = ('.TIFF', '.TIF')  # Image formats supported
         id_pattern = "(p\d{1,4})" # Image id example: 'scan_Plate_R_{p03}_0_A02f00d4.TIF',
         zStack_pattern = r"z(\d{1,4}).*d(\d)" # Zstack image example: 'EGFP_1mm_Plate_R_p00_{z79}_0_A02f00{d4}.TIF'
@@ -125,10 +130,10 @@ class ImageViewer:
                         continue
                     # Needs (match.groups(),) to unpack tuple properly
                     for id_, type_ in (match.groups(),):
-                        if type_ == "4":
+                        if type_ == "4": # Number beside "d" in the image name
                             image_obj = Image(id_, file, "BF", im_path, self)
                             self.bfImages.list.append(image_obj)
-                        elif type_ == "2":
+                        elif type_ == "2": # Number beside "d" in the image name
                             image_obj = Image(id_, file, "TR", im_path, self)
                             self.trImages.list.append(image_obj)
                         else:
@@ -138,7 +143,7 @@ class ImageViewer:
             totalNumFiles = len(self.dayFolders*3) # 3 files in every day folder
             pBar.startPbar.emit(totalNumFiles)
 
-            day_file_pattern = "_.{6}d(\d)"
+            day_file_pattern = "_.{6}d(\d)" # Looks for _ followed by 6 characters + d, and then a digit after that
 
             for day_num, day_path in self.dayFolders:
                 for file in os.listdir(day_path):
@@ -152,10 +157,10 @@ class ImageViewer:
                     match = re.search(day_file_pattern, file)
                     if match:
                         groups = match.groups()[0]
-                        if groups == "4":
+                        if groups == "4": # Number beside "d" in the image name
                             image_obj = Image(id_, name, "BF", im_path, self)
                             self.bfImages.list.append(image_obj)
-                        elif groups == "3":
+                        elif groups == "3": # Number beside "d" in the image name
                             image_obj = Image(id_, name, "TR", im_path, self)
                             self.trImages.list.append(image_obj)
                         else:
@@ -166,7 +171,10 @@ class ImageViewer:
         return
 
     def selectDir(self):
-        ''' Select a directory, make list of images in it and display the first image in the list. '''
+        """
+        Select a directory, then make and initialize ImageCollections based on folder structure.
+        --> 3 possible folder structures: timelapse, day folders, and z-stack
+        """
         # open 'select folder' dialog box
         self.basePath = str(QtWidgets.QFileDialog.getExistingDirectory(self.window, "Select Directory")) + "/"
         if not self.basePath:
@@ -217,6 +225,7 @@ class ImageViewer:
 
         self.window.tabWidget.setCurrentIndex(1)
 
+        # Pass off loading images to a separate thread as it can be computationally intensive 
         self.thread = InitializeImagesThread(self)
 
         self.thread.startPbar.connect(self.window.startPbar)
@@ -227,6 +236,7 @@ class ImageViewer:
         self.thread.start()
 
     def finishedInitializing(self):
+        """Set current image and list after loading and display"""
         # Display first image of TR and enable Pan
         self.currImageIdx = 0
         self.currImage = self.currImageCol.list[self.currImageIdx]
@@ -243,10 +253,14 @@ class ImageViewer:
             self.drawSharpnessGraphs()
 
     def resizeEvent(self, evt):
+        """
+        Function called when image needs to resize. 
+        """
         if self.currImageIdx >= 0:
             self.onResize()
 
     def nextImg(self):
+        """Loads the next image in the list."""
         if self.currImage is None:
             return
         if self.currImageIdx < self.numImages -1:
@@ -257,6 +271,7 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No more Images!')
 
     def prevImg(self):
+        """Loads the previous image in the list."""
         if self.currImage is None:
             return
         if self.currImageIdx > 0:
@@ -267,19 +282,22 @@ class ImageViewer:
             QtWidgets.QMessageBox.warning(self.window, 'Sorry', 'No previous Image!')
 
     def item_click(self, item):
+        """Called when user clicks an image name in the list on the side. Navigates and displays that image."""
         if self.currImageCol is not None:
             self.currImageIdx = self.qImageNameItems.index(item)
             self.changeImage()
 
     def action_move(self):
+        """Called when user attempts to click and drag mouse across image (pan)"""
         if self.window.toggle_move.isChecked():
             self.enablePan(True)
 
     def loadImage(self):
-        ''' To load and display new image.'''
+        """Load and displays current image."""
         if self.currImage is None:
             return
 
+        # Redrawing if there is a base image allows for image shapes to be mapped to base shapes
         if self.currImageCol.baseImage is not None and not self.isZstack:
             self.currImage.redraw()
 
@@ -292,12 +310,12 @@ class ImageViewer:
             self.window.statusbar.showMessage('Cannot open this image! Try another one.', 5000)
 
     def scaleUpdate(self):
-        ''' This function actually draws the scaled image to currImageCol.qlabel.
-            It will be repeatedly called when zooming or panning.
-            So, I tried to include only the necessary operations required just for these tasks.
-        '''
+        """
+        This function actually draws the scaled image to currImageCol.qlabel.
+        It will be repeatedly called when zooming or panning.
+        """
         if not self.qimage_scaled.isNull():
-            # check if position is within limits to prevent unbounded panning.
+            # Check if position is within limits to prevent unbounded panning.
             px, py = self.position
             px = px if (px <= self.qimage_scaled.width() - self.currImageCol.qlabel.width()) else (self.qimage_scaled.width() - self.currImageCol.qlabel.width())
             py = py if (py <= self.qimage_scaled.height() - self.currImageCol.qlabel.height()) else (self.qimage_scaled.height() - self.currImageCol.qlabel.height())
@@ -307,7 +325,7 @@ class ImageViewer:
 
             if self.zoomX == 1:
                 self.qpixmap.fill(QtCore.Qt.white)
-            # the act of painting the qpixamp
+            # The act of painting the qpixamp
             painter = QPainter()
             painter.begin(self.qpixmap)
             painter.drawImage(QtCore.QPoint(0, 0), self.qimage_scaled,
@@ -319,21 +337,29 @@ class ImageViewer:
             pass
 
     def mousePressAction(self, QMouseEvent):
+        """Called when mouse is pressed"""
         if self.panFlag:
-            self.pressed = QMouseEvent.pos()                            # Starting point of drag vector
-            self.anchor = self.position                                 # Save the pan position when panning starts
+            self.pressed = QMouseEvent.pos() # Starting point of drag vector
+            self.anchor = self.position      # Save the pan position when panning starts
 
     def mouseMoveAction(self, QMouseEvent):
+        """Called when mouse is moved"""
         self.mousex, self.mousey = QMouseEvent.pos().x(), QMouseEvent.pos().y()
         if self.pressed:
-            dx, dy = self.mousex - self.pressed.x(), self.mousey - self.pressed.y()         # Calculate the drag vector
-            self.position = self.anchor[0] - dx, self.anchor[1] - dy    # Update pan position using drag vector
-            self.scaleUpdate()                                               # Show the image with udated pan position
+            dx, dy = self.mousex - self.pressed.x(), self.mousey - self.pressed.y() # Calculate the drag vector
+            self.position = self.anchor[0] - dx, self.anchor[1] - dy # Update pan position using drag vector
+            self.scaleUpdate() # Show the image with udated pan position
 
     def mouseReleaseAction(self, QMouseEvent):
-        self.pressed = None                                             # Clear the starting point of drag vector
+        """Called when mouse is released"""
+        self.pressed = None # Clear the starting point of drag vector        
 
     def zoomPlus(self, scroll=False):
+        """
+        Function called when the zoom + button is clicked or CTRL+Scroll is used/trackpad zoom.
+        Args:
+          scroll: True if function is not called through the button, but CTRL+scroll or trackpad
+        """
         px, py = self.position
 
         if scroll:
@@ -344,6 +370,7 @@ class ImageViewer:
             # Subtract mousex and mousey to get the new top left corner for scaleUpdate
             px, py = img_x - self.mousex, img_y - self.mousey
         else:
+            # If zoom button is pressed --> zoom based on pre-defined amount (2x)
             px += self.currImageCol.qlabel.width()/2
             py += self.currImageCol.qlabel.height()/2
 
@@ -353,11 +380,16 @@ class ImageViewer:
         self.scaleUpdate()
 
     def zoomMinus(self, scroll=False):
+        """
+        Function called when the zoom - button is clicked or CTRL+Scroll is used/trackpad zoom.
+        Args:
+          scroll: True if function is not called through the button, but CTRL+scroll or trackpad
+        """
         if self.zoomX > 1:
             px, py = self.position
 
+            # Same as zoomPlus but reverse
             if scroll:
-                # Same as zoomPlus but reverse
                 img_x = (self.mousex+px) - (self.mousex+px)/self.zoomX
                 img_y = (self.mousey+py) - (self.mousey+py)/self.zoomX
                 px, py = img_x - self.mousex, img_y - self.mousey
@@ -371,6 +403,7 @@ class ImageViewer:
             self.scaleUpdate()
 
     def resetZoom(self):
+        """Called when zoom reset button is clicked"""
         if self.currImage is None:
             return
         self.zoomX = 1
@@ -379,9 +412,15 @@ class ImageViewer:
         self.scaleUpdate()
 
     def enablePan(self, value):
+        """Called when enable pan button is clicked"""
         self.panFlag = value
 
     def changeImageList(self, list_):
+        """
+        Changes image list between TR images and BF images. 
+        Args:
+          list_: List of image objects
+        """
         self.changeImage()
         # Make a list of qitems for the image names
         self.qImageNameItems = [QtWidgets.QListWidgetItem(img.name) for img in list_]
@@ -391,6 +430,11 @@ class ImageViewer:
         self.qImageNameItems[self.currImageIdx].setSelected(True)
 
     def changeTab(self, idx):
+        """
+        Called when one of the tabs in the GUI is clicked
+        Args:
+          idx: Index of tab that is clicked. 1 = Red Channel (TR), 2 = Bright Field (BF)
+        """
         if self.numImages > 0:
             if idx == 1:
                 self.window.checkBox.setCheckState(0) # Draw Ellipses for red channel
@@ -402,17 +446,21 @@ class ImageViewer:
                 self.changeImageList(self.bfImages.list)
 
     def changeThreshold(self):
+        """Called when either the threshold slider or number box is altered"""
         if self.currImage is not None and not self.isZstack:
             self.currImage.threshold = self.window.threshold_slider.value()
 
     def changeRadiusRange(self):
+        """Called when either the radius range slider or number box is altered"""
         if self.currImage is not None and not self.isZstack:
             self.currImage.radiusRange = self.window.radius_slider.getRange()
 
     def changeImage(self):
+        """Called when changing image on screen. Handles loading image on GUI and calculating shapes."""
         self.currImage = self.currImageCol.list[self.currImageIdx]
         self.loadImage()
 
+        # Disables delay in calculation while changing the image so next image shapes gets calculated immediately
         self.window.disableDebounce()
         self.window.threshold_box.setValue(self.currImage.threshold)
         self.window.radius_slider.setRange(self.currImage.radiusRange[0], self.currImage.radiusRange[1])
@@ -422,15 +470,18 @@ class ImageViewer:
             self.window.debounce.start()
 
     def setBaseImage(self):
+        """Marks current pair of images (both TR and BF) as their respective base images."""
         if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage, self.bfImages.baseImage = self.trImages.map[self.currImage.id], self.bfImages.map[self.currImage.id]
         self.trImages.baseId, self.bfImages.baseId = self.currImage.id, self.currImage.id
+        # Redraws allows for instant drawing of identification numbers for base shapes
         self.trImages.baseImage.redraw()
         self.bfImages.baseImage.redraw()
         self.loadImage()
 
     def clearBaseImage(self):
+        """Clears current base images in both the TR and BF image collections."""
         if self.currImage is None and not self.isZstack:
             return
         self.trImages.baseImage = None
@@ -440,11 +491,13 @@ class ImageViewer:
         self.loadImage()
 
     def drawCircle(self):
+        """Detects and draws circles for current image"""
         if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
         rng = self.window.radius_slider.getRange()
 
+        # Calculating and drawing circles is computationally intensive --> New thread
         self.thread = DrawCircleThread(self.currImage, thresh, rng, self.window)
 
         self.thread.startPbar.connect(self.window.startPbar)
@@ -455,6 +508,7 @@ class ImageViewer:
         self.thread.start()
 
     def drawEllipse(self):
+        """Detects and draws ellipses for current image"""
         if self.currImage is None and not self.isZstack:
             return
         thresh = self.window.threshold_slider.value()
@@ -470,6 +524,7 @@ class ImageViewer:
         self.thread.start()
 
     def recalculate(self):
+        """Recalculates and redraws whichever shapes are being detected"""
         if self.currImage is None and not self.isZstack:
             return
         if self.window.checkBox.isChecked():
@@ -478,6 +533,7 @@ class ImageViewer:
             self.drawEllipse()
 
     def exportAllExcel(self):
+        """Exports all currently drawn images as Excel data. Base image must be set before calling."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -491,6 +547,7 @@ class ImageViewer:
         self.thread.start()
 
     def exportSingleExcel(self):
+        """Exports shape dimensions of current images. Shapes should be drawn on both images in the current pair."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -505,6 +562,7 @@ class ImageViewer:
         self.thread.start()
 
     def exportAllImages(self):
+        """Exports all currently drawn images as Images (png)."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -521,6 +579,7 @@ class ImageViewer:
         self.thread.start()
 
     def exportSingleImage(self):
+        """Exports current image pair as Images (png)."""
         if self.currImage is None and not self.isZstack:
             return
 
@@ -538,6 +597,7 @@ class ImageViewer:
         self.thread.start()
 
     def drawSharpnessGraphs(self):
+        """Plots using popup MatPlotLib windows graphs of the sharpness of the images. This is used for Z-Stack images."""
         self.thread1, self.thread2 = GetSharpnessThread(self.bfImages.list, "Spheroid Sharpness"), GetSharpnessThread(self.trImages.list, "Sensor Sharpness")
 
         for thread in (self.thread1, self.thread2):
@@ -548,6 +608,12 @@ class ImageViewer:
             thread.start()
 
     def showSharpnessGraphs(self, imageSharpness, title):
+        """
+        Shows MatPlotLib graphs in popup windows.
+        Args:
+          imageSharpness: Array of tuples containing the id_ of the image and its sharpness value
+          title: Title of the plot. Either Sensor Sharpness or Spheroid Sharpness.
+        """
         x, y  = [], []
         for id_, sharpness in imageSharpness:
             x.append(float(id_))
@@ -565,6 +631,8 @@ class ImageViewer:
         self.sharpnessGraphs.append(plot)
 
 class InitializeImagesThread(QtCore.QThread):
+    """Thread object for loading images in"""
+    # Progress bar signals, connected to respective functions in main
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -580,6 +648,7 @@ class InitializeImagesThread(QtCore.QThread):
         self.finished.emit()
 
 class DrawCircleThread(QtCore.QThread):
+    """Thread object for calculating and drawing circles on image"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -597,6 +666,7 @@ class DrawCircleThread(QtCore.QThread):
         self.finished.emit()
 
 class DrawEllipseThread(QtCore.QThread):
+    """Thread object for calculating and drawing ellipses on image"""
     finished = QtCore.pyqtSignal()
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -614,6 +684,7 @@ class DrawEllipseThread(QtCore.QThread):
         self.finished.emit()
 
 class GetSharpnessThread(QtCore.QThread):
+    """Thread object for calculating and plotting sharpness graphs for Z-Stack images"""
     finished = QtCore.pyqtSignal(object, str)
     startPbar = QtCore.pyqtSignal(int)
     incrementPbar = QtCore.pyqtSignal()
@@ -635,6 +706,7 @@ class GetSharpnessThread(QtCore.QThread):
         self.finished.emit(imageSharpness, self.title)
 
 class PlotWindow(FigureCanvasQTAgg):
+    """Object for separate plot windows for sharpness graphs"""
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
