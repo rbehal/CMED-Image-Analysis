@@ -27,20 +27,24 @@ class MainWindow(QtWidgets.QMainWindow, gui):
 
     def __connectEvents(self):
         """Connects all UI objects to appropriate functions in code"""
+        # Image list navigation
         self.open_folder.clicked.connect(self.imageViewer.selectDir)
         self.next_im.clicked.connect(self.imageViewer.nextImg)
         self.prev_im.clicked.connect(self.imageViewer.prevImg)
         self.qlist_images.itemClicked.connect(self.imageViewer.item_click)
+        self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
 
+        # Image navigation 
         self.zoom_plus.clicked.connect(self.imageViewer.zoomPlus)
         self.zoom_minus.clicked.connect(self.imageViewer.zoomMinus)
         self.reset_zoom.clicked.connect(self.imageViewer.resetZoom)
         self.toggle_move.toggled.connect(self.imageViewer.action_move)
 
-        self.tabWidget.currentChanged.connect(self.imageViewer.changeTab)
+        # Checkbox for Fitting Circles and threshold box
         self.checkBox.stateChanged.connect(self.checkBoxTick)
         self.threshold_box.valueChanged.connect(self.imageViewer.changeThreshold)
 
+        # Radius sliders and boxes
         self.radius_slider.startValueChanged.connect(self.minRadius_box.setValue)
         self.radius_slider.endValueChanged.connect(self.maxRadius_box.setValue)
         self.minRadius_box.valueChanged.connect(self.radius_slider.setStart)
@@ -48,12 +52,13 @@ class MainWindow(QtWidgets.QMainWindow, gui):
         self.maxRadius_box.valueChanged.connect(self.radius_slider.setEnd)
         self.maxRadius_box.valueChanged.connect(self.imageViewer.changeRadiusRange)
 
+        # Right set of buttons
         self.calculate.clicked.connect(self.imageViewer.recalculate)
         self.draw.clicked.connect(self.imageViewer.loadImage)
         self.set_base.clicked.connect(self.imageViewer.setBaseImage)
         self.clear_base.clicked.connect(self.imageViewer.clearBaseImage)
 
-        # Menu Bar
+        # Menu bar at the top
         self.menu_all_excel.triggered.connect(self.imageViewer.exportAllExcel)
         self.menu_single_excel.triggered.connect(self.imageViewer.exportSingleExcel)
         self.menu_all_img.triggered.connect(self.imageViewer.exportAllImages)
@@ -71,7 +76,7 @@ class MainWindow(QtWidgets.QMainWindow, gui):
         """
         self.progressBar.setValue(0)
         self.progressBar.setMaximum(max_)
-        QApplication.processEvents()
+        QApplication.processEvents() # Process Events necessary to update main window
 
     def incrementPbar(self):
         """Increments the progress bar by 1 value"""
@@ -97,7 +102,7 @@ class MainWindow(QtWidgets.QMainWindow, gui):
 
         self.enableDebounce()
 
-        self.checkBox.setCheckState(2) # Initially set to draw circles
+        self.checkBox.setCheckState(2) # Initially enabled --> set to draw circles
 
     def disableDebounce(self):
         """Disconnects changing threshold/radius values from calculation of shapes in the image"""
