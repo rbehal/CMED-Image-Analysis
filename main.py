@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication
 from ImageViewer import ImageViewer
 from qrangeslider import QRangeSlider
 
-gui = uic.loadUiType("main.ui")[0]     # load UI file designed in Qt Designer
+gui = uic.loadUiType("main.ui")[0] # Load UI file designed in Qt Designer
 
 class MainWindow(QtWidgets.QMainWindow, gui):
     """Main window and thread."""
