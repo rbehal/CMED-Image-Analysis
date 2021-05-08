@@ -4,6 +4,24 @@ user-input threshold and radius range parameters. The program was built to detec
 image in the red channel, and are visible as white dots in a black background. The spheroids are represented in the bright field channel, and are visible as brownish blobs on a 
 varied taupish background. The program only detects spheroids that have sensors within them, as many did not in the sample data.
 
+# Examples
+
+Upon running program:
+
+![image](https://user-images.githubusercontent.com/1645830/117553157-d9d3ab00-b01d-11eb-9be8-0327961bca6e.png)
+
+Detecting spheroids:
+
+![image](https://user-images.githubusercontent.com/1645830/117553186-fcfe5a80-b01d-11eb-9140-fa7af0805cc8.png)
+
+Detecting sensors:
+
+![image](https://user-images.githubusercontent.com/1645830/117553198-0be50d00-b01e-11eb-8fc9-51f5c83711ce.png)
+
+Export data to Excel:
+
+![image](https://user-images.githubusercontent.com/1645830/117553211-24edbe00-b01e-11eb-8aac-ed6fa29d1e23.png)
+
 # Original Purpose - Abstract
 The development of a means to measure miniscule tissue stresses is incredibly useful for the general understanding of dynamics at play during tissue formation. 
 As demonstrated in a 2019 paper, polyacrylamide microspherical stress gauges (MSGs) can be dispersed into 3D multicellular spheroid (MCS) cultures to map radial and 
