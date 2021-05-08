@@ -1,6 +1,6 @@
 # CMED Image Analysis
 Image analysis program built for the Cellular Microenvironment Design Lab at McGill University. The program detects and traces circles or ellipses in a pair of images using 
-user-input threshold and radius range parameters. The program was built to detect sensors in spheropids in varying colour channels of the same image. The sensors are within the 
+user-input threshold and radius range parameters. The program was built to detect sensors in spheroids in varying colour channels of the same image. The sensors are within the 
 image in the red channel, and are visible as white dots in a black background. The spheroids are represented in the bright field channel, and are visible as brownish blobs on a 
 varied taupish background. The program only detects spheroids that have sensors within them, as many did not in the sample data.
 
